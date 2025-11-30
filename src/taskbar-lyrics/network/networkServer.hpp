@@ -44,6 +44,7 @@ private:
     void handlePosition(const std::string& body);
     void handleMargin(const std::string& body);
     void handleScreen(const std::string& body);
+    void handleHeartbeat(const std::string& body);
     void handleClose(const std::string& body);
 
     // Encoding conversion

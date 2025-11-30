@@ -139,6 +139,7 @@ void NetworkServer::handleConnection(SOCKET clientSocket)
                 else if (url == "/taskbar/window/position") handlePosition(body);
                 else if (url == "/taskbar/window/margin") handleMargin(body);
                 else if (url == "/taskbar/window/screen") handleScreen(body);
+                else if (url == "/taskbar/heartbeat") handleHeartbeat(body);
                 else if (url == "/taskbar/close") {
                     handleClose(body);
                     break;
@@ -168,6 +169,7 @@ void NetworkServer::handleConnection(SOCKET clientSocket)
                 else if (url == "/taskbar/window/position") handlePosition(body);
                 else if (url == "/taskbar/window/margin") handleMargin(body);
                 else if (url == "/taskbar/window/screen") handleScreen(body);
+                else if (url == "/taskbar/heartbeat") handleHeartbeat(body);
                 else if (url == "/taskbar/close") handleClose(body);
             }
         }
@@ -432,6 +434,10 @@ void NetworkServer::handleMargin(const std::string& body) {
 
 void NetworkServer::handleScreen(const std::string& body) {
     // Not implemented in original code but present in switch
+}
+
+void NetworkServer::handleHeartbeat(const std::string& body) {
+    // Heartbeat received, timestamp already updated
 }
 
 void NetworkServer::handleClose(const std::string& body) {
