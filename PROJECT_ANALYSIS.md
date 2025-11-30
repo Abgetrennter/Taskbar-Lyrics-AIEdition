@@ -14,12 +14,12 @@ e:\Code\Taskbar-Lyrics-1.x.x
 ├── dist/                # 构建产物（用户最终使用的文件）
 ├── src/
 │   ├── betterncm-plugin/ # [前端] BetterNCM 插件源码 (JS/HTML/CSS)
-│   │   ├── base.js       # 基础配置与 API 封装
+│   │   ├── base.js       # 基础配置与 WebSocket 封装
 │   │   ├── lyric.js      # 歌词获取与处理逻辑
 │   │   ├── config.html   # 设置界面
 │   │   └── ...
 │   └── taskbar-lyrics/   # [后端] C++ 原生程序源码
-│       ├── NetworkServer.* # HTTP 服务器实现
+│       ├── NetworkServer.* # WebSocket 服务器实现
 │       ├── CreateWindow.*  # 窗口创建与管理
 │       ├── RenderWindow.*  # Direct2D 渲染逻辑
 │       └── TaskbarLyrics.cpp # 程序入口
@@ -30,8 +30,8 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 | 模块 | 语言 | 职责 | 关键依赖 |
 | :--- | :--- | :--- | :--- |
-| **Frontend (Plugin)** | JavaScript | 1. 从网易云音乐获取歌词<br>2. 提供用户配置界面<br>3. 发送数据给后端 | BetterNCM API |
-| **Backend (Native)** | C++ (Win32) | 1. 运行本地 HTTP 服务器接收数据<br>2. 创建透明任务栏窗口<br>3. 使用 Direct2D 渲染歌词 | Windows API, Direct2D, DirectWrite, cpp-httplib, nlohmann-json |
+| **Frontend (Plugin)** | JavaScript | 1. 从网易云音乐获取歌词<br>2. 提供用户配置界面<br>3. 与后端建立 WebSocket 连接发送数据 | BetterNCM API |
+| **Backend (Native)** | C++ (Win32) | 1. 运行本地 WebSocket 服务器接收数据<br>2. 创建透明任务栏窗口<br>3. 使用 Direct2D 渲染歌词<br>4. 心跳检测与自动退出 | Windows API, Direct2D, DirectWrite, WinSock2 |
 
 ---
 
@@ -44,9 +44,10 @@ e:\Code\Taskbar-Lyrics-1.x.x
 3.  **RefinedNowPlaying**: 兼容另一个插件的歌词数据源。
 
 ### 2.2 跨进程通信
-前端与后端通过 **本地 HTTP (Localhost)** 进行通信。
-- **服务端**: C++ 程序启动一个 HTTP Server，监听端口 `BETTERNCM_API_PORT - 2`。
-- **客户端**: JS 插件通过 `fetch` 发送 POST 请求传输 JSON 数据。
+前端与后端通过 **WebSocket** 进行通信。
+- **服务端**: C++ 程序启动一个 TCP Server 并升级为 WebSocket 协议，监听端口 `BETTERNCM_API_PORT - 2`。
+- **客户端**: JS 插件通过 `WebSocket` API 建立长连接，支持断线自动重连和消息队列。
+- **心跳机制**: 前端每 5 秒发送一次心跳包，后端若 10 秒未收到任何数据则自动退出。
 
 ### 2.3 窗口嵌入与渲染 (后端)
 - **嵌入任务栏**: 使用 `SetParent` API 将窗口父节点设置为任务栏窗口 (`Shell_TrayWnd`)，实现“嵌入”效果。
@@ -57,14 +58,15 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 ## 3. 接口文档
 
-后端服务监听地址：`http://127.0.0.1:<PORT>` (PORT 默认为 BetterNCM 端口 - 2)
-所有接口均使用 **POST** 方法，请求体为 **JSON** 格式。
+后端服务监听地址：`ws://127.0.0.1:<PORT>` (PORT 默认为 BetterNCM 端口 - 2)
+所有通信均通过 WebSocket 文本帧传输 JSON 数据。JSON 结构中包含 `url` 字段用于区分指令。
 
 ### 3.1 歌词控制
 
-#### 发送歌词 `/taskbar/lyrics/lyrics`
+#### 发送歌词
 更新当前显示的歌词内容。
-- **请求参数**:
+- **指令 (`url`)**: `/taskbar/lyrics/lyrics`
+- **参数**:
   ```json
   {
     "basic": "主歌词内容（如：原语言）",
@@ -72,9 +74,10 @@ e:\Code\Taskbar-Lyrics-1.x.x
   }
   ```
 
-#### 歌词对齐 `/taskbar/lyrics/align`
+#### 歌词对齐
 设置歌词的文本对齐方式。
-- **请求参数**:
+- **指令 (`url`)**: `/taskbar/lyrics/align`
+- **参数**:
   ```json
   {
     "basic": 0, // 主歌词对齐方式 (0:左, 1:右, 2:中, 3:两端)
@@ -85,16 +88,18 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 ### 3.2 样式设置
 
-#### 设置字体 `/taskbar/font/font`
-- **请求参数**:
+#### 设置字体
+- **指令 (`url`)**: `/taskbar/font/font`
+- **参数**:
   ```json
   {
     "font_family": "Microsoft YaHei UI" // 字体名称
   }
   ```
 
-#### 设置颜色 `/taskbar/font/color`
-- **请求参数**:
+#### 设置颜色
+- **指令 (`url`)**: `/taskbar/font/color`
+- **参数**:
   ```json
   {
     "basic": {
@@ -106,8 +111,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
   ```
   *注：颜色值为 16 进制整数 (如 0xFF0000 表示红色)。*
 
-#### 设置样式 `/taskbar/font/style`
-- **请求参数**:
+#### 设置样式
+- **指令 (`url`)**: `/taskbar/font/style`
+- **参数**:
   ```json
   {
     "basic": {
@@ -120,18 +126,30 @@ e:\Code\Taskbar-Lyrics-1.x.x
   }
   ```
 
+#### 设置大小
+- **指令 (`url`)**: `/taskbar/font/size`
+- **参数**:
+  ```json
+  {
+    "basic": 20.0, // 主歌词字体大小 (单位: 像素)
+    "extra": 15.0  // 副歌词字体大小
+  }
+  ```
+
 ### 3.3 窗口控制
 
-#### 窗口位置 `/taskbar/window/position`
-- **请求参数**:
+#### 窗口位置
+- **指令 (`url`)**: `/taskbar/window/position`
+- **参数**:
   ```json
   {
     "position": { "value": 0 } // 0: 自适应, 1: 左, 2: 中, 3: 右
   }
   ```
 
-#### 窗口边距 `/taskbar/window/margin`
-- **请求参数**:
+#### 窗口边距
+- **指令 (`url`)**: `/taskbar/window/margin`
+- **参数**:
   ```json
   {
     "left": 0,
@@ -139,16 +157,22 @@ e:\Code\Taskbar-Lyrics-1.x.x
   }
   ```
 
-#### 设置父窗口 `/taskbar/window/screen`
-- **请求参数**:
+#### 设置父窗口
+- **指令 (`url`)**: `/taskbar/window/screen`
+- **参数**:
   ```json
   {
     "parent_taskbar": { "value": "Shell_TrayWnd" } // 任务栏窗口类名
   }
   ```
 
-#### 关闭程序 `/taskbar/close`
+#### 关闭程序
 关闭 C++ 后端程序。无特殊参数。
+- **指令 (`url`)**: `/taskbar/close`
+
+#### 心跳检测
+保持连接活跃。
+- **指令 (`url`)**: `/taskbar/heartbeat`
 
 ---
 
@@ -159,8 +183,8 @@ e:\Code\Taskbar-Lyrics-1.x.x
 1.  **Trigger (事件触发)**: 用户在网易云音乐切歌或进度改变。
 2.  **Capture (捕获)**: `betterncm-plugin/lyric.js` 捕获事件，从 DOM 或 API 获取当前时间点的歌词文本。
 3.  **Process (处理)**: 插件根据配置（如是否显示翻译、下一句位置）格式化歌词对象。
-4.  **Transport (传输)**: `betterncm-plugin/base.js` 将 JSON 数据 POST 到本地 HTTP 服务器。
-5.  **Receive (接收)**: `taskbar-lyrics/NetworkServer.cpp` 接收请求，解析 JSON，更新 `RenderWindow` 对象的成员变量。
+4.  **Transport (传输)**: `betterncm-plugin/base.js` 将 JSON 数据通过 WebSocket 发送到本地服务器。
+5.  **Receive (接收)**: `taskbar-lyrics/NetworkServer.cpp` 接收 WebSocket 帧，解析 JSON，更新 `RenderWindow` 对象的成员变量。
 6.  **Render (渲染)**: `NetworkServer` 发送 `WM_PAINT` 消息 -> `RenderWindow.cpp` 触发重绘 -> Direct2D 将新文本画在屏幕上。
 
 ---
@@ -170,16 +194,10 @@ e:\Code\Taskbar-Lyrics-1.x.x
 ### 5.1 环境要求
 - **操作系统**: Windows 10 / 11 (推荐 Windows 11)
 - **编译环境**: Visual Studio 2022 (支持 C++17 或更高)
-- **包管理器**: vcpkg
 
 ### 5.2 构建步骤
-1.  **安装依赖库**:
-    使用 vcpkg 安装必要的 C++ 库：
-    ```powershell
-    vcpkg install cpp-httplib:x86-windows
-    vcpkg install nlohmann-json:x86-windows
-    vcpkg integrate install
-    ```
+1.  **依赖说明**:
+    本项目已移除 `cpp-httplib` 和 `nlohmann-json` 的外部依赖，改用原生 WinSock2 和简易 JSON 解析，以减小体积和编译复杂度。
 
 2.  **编译项目**:
     打开 `Taskbar Lyrics.sln`，选择 **Release** 配置和 **x86** 平台，点击生成。
@@ -200,6 +218,7 @@ e:\Code\Taskbar-Lyrics-1.x.x
 - **高分屏适配**: 虽然使用了 Direct2D，但在不同 DPI 设置的多显示器环境下，窗口位置计算可能需要额外校准。
 
 ### 6.2 优化建议
-- **心跳机制**: 目前只有前端调后端。建议增加后端对前端的心跳检测，如果前端（网易云）关闭，后端应自动退出以节省资源。
-- **错误处理**: 增强 HTTP 请求的错误处理机制，当后端未启动时，前端应尝试唤起后端或提示用户。
-- **WebSocket 升级**: 考虑将 HTTP POST 轮询/推送改为 WebSocket 长连接，可以减少 TCP 握手开销，提高实时性。
+- **渲染性能优化**: 目前每次收到消息（包括进度更新）都会触发全窗口重绘。可以引入脏矩形渲染或去抖动机制，仅重绘变化的区域，降低 GPU 占用。
+- **多显示器/高 DPI 支持**: 完善在多显示器、不同 DPI 缩放比下的窗口位置计算和字体渲染逻辑。
+- **配置持久化**: 考虑在后端增加简单的配置文件读写能力，以便在无前端连接时也能记住上次的窗口位置和样式。
+- **国际化 (i18n)**: 为前端配置界面和后端提示信息添加多语言支持。
