@@ -11,28 +11,34 @@
         </Filter>
     </ItemGroup>
     <ItemGroup>
-        <ClInclude Include="src\taskbar-lyrics\TaskbarLyrics.hpp">
+        <ClInclude Include="src\taskbar-lyrics\core\taskbarLyrics.hpp">
             <Filter>头文件</Filter>
         </ClInclude>
-        <ClInclude Include="src\taskbar-lyrics\NetworkServer.hpp">
+        <ClInclude Include="src\taskbar-lyrics\network\networkServer.hpp">
             <Filter>头文件</Filter>
         </ClInclude>
-        <ClInclude Include="src\taskbar-lyrics\CreateWindow.hpp">
+        <ClInclude Include="src\taskbar-lyrics\ui\lyricsRenderer.hpp">
             <Filter>头文件</Filter>
         </ClInclude>
-        <ClInclude Include="src\taskbar-lyrics\RenderWindow.hpp">
+        <ClInclude Include="src\taskbar-lyrics\ui\lyricsWindow.hpp">
             <Filter>头文件</Filter>
         </ClInclude>
-        <ClCompile Include="src\taskbar-lyrics\TaskbarLyrics.cpp">
+        <ClInclude Include="src\taskbar-lyrics\utils\jsonUtils.hpp">
+            <Filter>头文件</Filter>
+        </ClInclude>
+        <ClCompile Include="src\taskbar-lyrics\core\taskbarLyrics.cpp">
             <Filter>源文件</Filter>
         </ClCompile>
-        <ClCompile Include="src\taskbar-lyrics\NetworkServer.cpp">
+        <ClCompile Include="src\taskbar-lyrics\network\networkServer.cpp">
             <Filter>源文件</Filter>
         </ClCompile>
-        <ClCompile Include="src\taskbar-lyrics\CreateWindow.cpp">
+        <ClCompile Include="src\taskbar-lyrics\ui\lyricsRenderer.cpp">
             <Filter>源文件</Filter>
         </ClCompile>
-        <ClCompile Include="src\taskbar-lyrics\RenderWindow.cpp">
+        <ClCompile Include="src\taskbar-lyrics\ui\lyricsWindow.cpp">
+            <Filter>源文件</Filter>
+        </ClCompile>
+        <ClCompile Include="src\taskbar-lyrics\utils\jsonUtils.cpp">
             <Filter>源文件</Filter>
         </ClCompile>
     </ItemGroup>
