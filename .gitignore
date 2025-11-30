@@ -1,0 +1,12 @@
+.vs
+.vscode
+
+Release
+Debug
+
+dist_debug
+dist/taskbar-lyrics.pdb
+
+betterncm-plugin.vcxproj.user
+taskbar-lyrics.vcxproj.user
+dist/
