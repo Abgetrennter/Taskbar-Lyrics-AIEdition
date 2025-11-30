@@ -91,6 +91,7 @@ void 网络服务器类::处理连接(SOCKET clientSocket) {
                 if (url == "/taskbar/font/font") 字体(body);
                 else if (url == "/taskbar/font/color") 颜色(body);
                 else if (url == "/taskbar/font/style") 样式(body);
+                else if (url == "/taskbar/font/size") 大小(body);
                 else if (url == "/taskbar/lyrics/lyrics") 歌词(body);
                 else if (url == "/taskbar/lyrics/align") 对齐(body);
                 else if (url == "/taskbar/window/position") 位置(body);
@@ -204,6 +205,22 @@ void 网络服务器类::样式(const std::string& body) {
     this->任务栏窗口->呈现窗口->字体样式_副歌词_斜体 = (DWRITE_FONT_STYLE)JsonGetInt(body, "extra_slope");
     this->任务栏窗口->呈现窗口->字体样式_副歌词_下划线 = JsonGetBool(body, "extra_underline");
     this->任务栏窗口->呈现窗口->字体样式_副歌词_删除线 = JsonGetBool(body, "extra_strikethrough");
+
+    PostMessage(this->任务栏窗口->窗口句柄, WM_PAINT, NULL, NULL);
+}
+
+void 网络服务器类::大小(const std::string& body) {
+    float basic = JsonGetFloat(body, "basic");
+    float extra = JsonGetFloat(body, "extra");
+
+    if (basic > 0) {
+        this->任务栏窗口->呈现窗口->字体大小_主歌词 = basic;
+    }
+    
+    if (extra > 0) {
+        this->任务栏窗口->呈现窗口->字体大小_副歌词 = extra;
+        this->任务栏窗口->呈现窗口->字体大小_主歌词_双行 = extra;
+    }
 
     PostMessage(this->任务栏窗口->窗口句柄, WM_PAINT, NULL, NULL);
 }

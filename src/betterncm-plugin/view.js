@@ -17,6 +17,7 @@ plugin.onLoad(async () => {
         font,
         color,
         style,
+        size,
         lyrics,
         effect,
         align,
@@ -141,6 +142,27 @@ plugin.onLoad(async () => {
         extraLightOpacity.value = pluginConfig.get("color")["extra"]["light"]["opacity"];
         extraDarkColor.value = `#${pluginConfig.get("color")["extra"]["dark"]["hex_color"].toString(16)}`;
         extraDarkOpacity.value = pluginConfig.get("color")["extra"]["dark"]["opacity"];
+    }
+
+
+    // 字体大小
+    {
+        const apply = configView.querySelector(".content.font .size-settings .apply");
+        const reset = configView.querySelector(".content.font .size-settings .reset");
+
+        const basicSize = configView.querySelector(".content.font .size-settings .basic-size");
+        const extraSize = configView.querySelector(".content.font .size-settings .extra-size");
+
+        const elements = {
+            basicSize,
+            extraSize
+        }
+
+        apply.addEventListener("click", () => size.apply(elements));
+        reset.addEventListener("click", () => size.reset(elements));
+
+        basicSize.value = pluginConfig.get("size")["basic"];
+        extraSize.value = pluginConfig.get("size")["extra"];
     }
 
 

@@ -32,6 +32,7 @@ plugin.onLoad(async () => {
             font: params => TaskbarLyricsFetch("/font/font", params),
             color: params => TaskbarLyricsFetch("/font/color", params),
             style: params => TaskbarLyricsFetch("/font/style", params),
+            size: params => TaskbarLyricsFetch("/font/size", params),
         },
 
         // 歌词设置
@@ -97,6 +98,10 @@ plugin.onLoad(async () => {
     const defaultConfig = {
         "font": {
             "font_family": "Microsoft YaHei UI"
+        },
+        "size": {
+            "basic": 20,
+            "extra": 15
         },
         "color": {
             "basic": {

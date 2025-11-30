@@ -208,7 +208,7 @@ void 呈现窗口类::绘制歌词(
             this->字体样式_主歌词_字重,
             this->字体样式_主歌词_斜体,
             DWRITE_FONT_STRETCH_NORMAL,
-            this->DPI(20),
+            this->DPI(this->字体大小_主歌词),
             L"zh-CN",
             &this->DWrite主歌词文本格式
         );
@@ -262,7 +262,7 @@ void 呈现窗口类::绘制歌词(
             this->字体样式_主歌词_字重,
             this->字体样式_主歌词_斜体,
             DWRITE_FONT_STRETCH_NORMAL,
-            this->DPI(15),
+            this->DPI(this->字体大小_主歌词_双行),
             L"zh-CN",
             &this->DWrite主歌词文本格式
         );
@@ -282,6 +282,7 @@ void 呈现窗口类::绘制歌词(
         this->DWrite主歌词文本布局->SetTextAlignment(this->对齐方式_主歌词);
         this->DWrite主歌词文本布局->SetUnderline(this->字体样式_主歌词_下划线, DWRITE_TEXT_RANGE{0, this->主歌词.size()});
         this->DWrite主歌词文本布局->SetStrikethrough(this->字体样式_主歌词_删除线, DWRITE_TEXT_RANGE{0, this->主歌词.size()});
+        // this->DWrite主歌词文本布局->SetFontSize(this->DWrite主歌词文本布局->GetFontSize() + 2.f, DWRITE_TEXT_RANGE{ 0, this->主歌词.size() });
         this->D2D纯色笔刷->SetColor(this->深浅模式 ? this->字体颜色_浅色_主歌词 : this->字体颜色_深色_主歌词);
 
         //绘制文字显示
@@ -311,7 +312,7 @@ void 呈现窗口类::绘制歌词(
             this->字体样式_副歌词_字重,
             this->字体样式_副歌词_斜体,
             DWRITE_FONT_STRETCH_NORMAL,
-            this->DPI(15),
+            this->DPI(this->字体大小_副歌词),
             L"zh-CN",
             &this->DWrite副歌词文本格式
         );
@@ -331,6 +332,7 @@ void 呈现窗口类::绘制歌词(
         this->DWrite副歌词文本布局->SetTextAlignment(this->对齐方式_副歌词);
         this->DWrite副歌词文本布局->SetUnderline(this->字体样式_副歌词_下划线, DWRITE_TEXT_RANGE{0, this->副歌词.size()});
         this->DWrite副歌词文本布局->SetStrikethrough(this->字体样式_副歌词_删除线, DWRITE_TEXT_RANGE{0, this->副歌词.size()});
+        
         this->D2D纯色笔刷->SetColor(this->深浅模式 ? this->字体颜色_浅色_副歌词 : this->字体颜色_深色_副歌词);
 
         //绘制文字显示
@@ -356,7 +358,7 @@ void 呈现窗口类::绘制歌词(
 
 
 float 呈现窗口类::DPI(
-    UINT 像素大小
+    float 像素大小
 ) {
     auto 屏幕DPI = GetDpiForWindow(*this->窗口句柄);
     auto 新像素大小 = static_cast<float>(像素大小 * 屏幕DPI / 96);

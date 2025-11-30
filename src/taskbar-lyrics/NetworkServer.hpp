@@ -31,6 +31,7 @@ private:
     void 字体(const std::string& body);
     void 颜色(const std::string& body);
     void 样式(const std::string& body);
+    void 大小(const std::string& body);
     void 歌词(const std::string& body);
     void 对齐(const std::string& body);
     void 位置(const std::string& body);

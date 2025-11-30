@@ -25,6 +25,7 @@ plugin.onLoad(async () => {
         TaskbarLyricsAPI.font.font(pluginConfig.get("font"));
         TaskbarLyricsAPI.font.color(pluginConfig.get("color"));
         TaskbarLyricsAPI.font.style(pluginConfig.get("style"));
+        TaskbarLyricsAPI.font.size(pluginConfig.get("size"));
         TaskbarLyricsAPI.window.position(pluginConfig.get("position"));
         TaskbarLyricsAPI.window.margin(pluginConfig.get("margin"));
         TaskbarLyricsAPI.lyrics.align(pluginConfig.get("align"));
@@ -86,6 +87,24 @@ plugin.onLoad(async () => {
             elements.extraDarkOpacity.value = defaultConfig["color"]["extra"]["dark"]["opacity"];
             pluginConfig.set("color", undefined);
             TaskbarLyricsAPI.font.color(defaultConfig["color"]);
+        }
+    }
+
+
+    // 字体大小
+    const size = {
+        apply: elements => {
+            const config = JSON.parse(JSON.stringify(pluginConfig.get("size")));
+            config["basic"] = Number(elements.basicSize.value);
+            config["extra"] = Number(elements.extraSize.value);
+            pluginConfig.set("size", config);
+            TaskbarLyricsAPI.font.size(config);
+        },
+        reset: elements => {
+            elements.basicSize.value = defaultConfig["size"]["basic"];
+            elements.extraSize.value = defaultConfig["size"]["extra"];
+            pluginConfig.set("size", undefined);
+            TaskbarLyricsAPI.font.size(defaultConfig["size"]);
         }
     }
 
@@ -273,6 +292,7 @@ plugin.onLoad(async () => {
         font,
         color,
         style,
+        size,
         lyrics,
         effect,
         align,

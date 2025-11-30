@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <Windows.h>
 #include <d2d1.h>
@@ -75,6 +75,10 @@ class 呈现窗口类
     bool 字体样式_主歌词_删除线 = false;
     bool 字体样式_副歌词_删除线 = false;
 
+    float 字体大小_主歌词 = 20.0f;
+    float 字体大小_主歌词_双行 = 15.0f;
+    float 字体大小_副歌词 = 15.0f;
+
     WindowAlignment 窗口位置 = WindowAlignment::WindowAlignmentAdaptive;
 
     int 左边距 = 0;
@@ -94,5 +98,5 @@ class 呈现窗口类
 
 
     private:
-    float DPI(UINT);
+    float DPI(float);
 };
