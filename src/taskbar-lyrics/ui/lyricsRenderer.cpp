@@ -46,6 +46,11 @@ LyricsRenderer::LyricsRenderer(HWND* windowHandle)
 
 LyricsRenderer::~LyricsRenderer()
 {
+    if (m_dwriteBasicTextFormat) { m_dwriteBasicTextFormat->Release(); m_dwriteBasicTextFormat = nullptr; }
+    if (m_dwriteBasicTextLayout) { m_dwriteBasicTextLayout->Release(); m_dwriteBasicTextLayout = nullptr; }
+    if (m_dwriteExtraTextFormat) { m_dwriteExtraTextFormat->Release(); m_dwriteExtraTextFormat = nullptr; }
+    if (m_dwriteExtraTextLayout) { m_dwriteExtraTextLayout->Release(); m_dwriteExtraTextLayout = nullptr; }
+
     if (m_d2dFactory) { m_d2dFactory->Release(); m_d2dFactory = nullptr; }
     if (m_d2dRenderTarget) { m_d2dRenderTarget->Release(); m_d2dRenderTarget = nullptr; }
     if (m_d2dSolidBrush) { m_d2dSolidBrush->Release(); m_d2dSolidBrush = nullptr; }
@@ -160,172 +165,198 @@ void LyricsRenderer::drawWindow(long left, long top, long width, long height)
     ReleaseDC(*m_windowHandle, hdc);
 }
 
+void LyricsRenderer::updateResources(float width, float height)
+{
+    bool isDoubleLine = !extraLyrics.empty();
+    bool layoutChanged = (width != cachedLayoutWidth || height != cachedLayoutHeight || isDoubleLine != cachedIsDoubleLine);
+
+    // Check Basic Text Format
+    bool basicFormatChanged = false;
+    if (fontFamily != cachedFontFamily ||
+        basicFontWeight != cachedBasicFontWeight ||
+        basicFontStyle != cachedBasicFontStyle ||
+        (isDoubleLine ? basicFontSizeDoubleLine : basicFontSize) != (isDoubleLine ? cachedBasicFontSizeDoubleLine : cachedBasicFontSize) ||
+        !m_dwriteBasicTextFormat)
+    {
+        basicFormatChanged = true;
+        if (m_dwriteBasicTextFormat) { m_dwriteBasicTextFormat->Release(); m_dwriteBasicTextFormat = nullptr; }
+
+        m_dwriteFactory->CreateTextFormat(
+            fontFamily.c_str(),
+            nullptr,
+            basicFontWeight,
+            basicFontStyle,
+            DWRITE_FONT_STRETCH_NORMAL,
+            dpi(isDoubleLine ? basicFontSizeDoubleLine : basicFontSize),
+            L"zh-CN",
+            &m_dwriteBasicTextFormat
+        );
+
+        cachedFontFamily = fontFamily;
+        cachedBasicFontWeight = basicFontWeight;
+        cachedBasicFontStyle = basicFontStyle;
+        if (isDoubleLine) cachedBasicFontSizeDoubleLine = basicFontSizeDoubleLine;
+        else cachedBasicFontSize = basicFontSize;
+    }
+
+    // Check Basic Text Layout
+    if (basicFormatChanged ||
+        layoutChanged ||
+        basicLyrics != cachedBasicLyrics ||
+        basicTextAlign != cachedBasicTextAlign ||
+        basicUnderline != cachedBasicUnderline ||
+        basicStrikethrough != cachedBasicStrikethrough ||
+        !m_dwriteBasicTextLayout)
+    {
+        if (m_dwriteBasicTextLayout) { m_dwriteBasicTextLayout->Release(); m_dwriteBasicTextLayout = nullptr; }
+
+        float layoutWidth, layoutHeight;
+        if (!isDoubleLine) {
+            layoutWidth = (std::max)(0.0f, width - dpi(20));
+            layoutHeight = (std::max)(0.0f, height - dpi(20));
+        } else {
+            layoutWidth = (std::max)(0.0f, width - dpi(10));
+            layoutHeight = (std::max)(0.0f, height / 2.0f - dpi(5));
+        }
+
+        m_dwriteFactory->CreateTextLayout(
+            basicLyrics.c_str(),
+            (UINT32)basicLyrics.size(),
+            m_dwriteBasicTextFormat,
+            layoutWidth,
+            layoutHeight,
+            &m_dwriteBasicTextLayout
+        );
+
+        DWRITE_TRIMMING trimming = { DWRITE_TRIMMING_GRANULARITY_CHARACTER, 0, 0 };
+        m_dwriteBasicTextLayout->SetTrimming(&trimming, nullptr);
+        m_dwriteBasicTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+        m_dwriteBasicTextLayout->SetTextAlignment(basicTextAlign);
+        m_dwriteBasicTextLayout->SetUnderline(basicUnderline, DWRITE_TEXT_RANGE{ 0, (UINT32)basicLyrics.size() });
+        m_dwriteBasicTextLayout->SetStrikethrough(basicStrikethrough, DWRITE_TEXT_RANGE{ 0, (UINT32)basicLyrics.size() });
+
+        cachedBasicLyrics = basicLyrics;
+        cachedBasicTextAlign = basicTextAlign;
+        cachedBasicUnderline = basicUnderline;
+        cachedBasicStrikethrough = basicStrikethrough;
+    }
+
+    // Check Extra Text Format & Layout (only if double line)
+    if (isDoubleLine)
+    {
+        bool extraFormatChanged = false;
+        if (fontFamily != cachedFontFamily || // Use same font family logic
+            extraFontWeight != cachedExtraFontWeight ||
+            extraFontStyle != cachedExtraFontStyle ||
+            extraFontSize != cachedExtraFontSize ||
+            !m_dwriteExtraTextFormat)
+        {
+            extraFormatChanged = true;
+            if (m_dwriteExtraTextFormat) { m_dwriteExtraTextFormat->Release(); m_dwriteExtraTextFormat = nullptr; }
+
+            m_dwriteFactory->CreateTextFormat(
+                fontFamily.c_str(),
+                nullptr,
+                extraFontWeight,
+                extraFontStyle,
+                DWRITE_FONT_STRETCH_NORMAL,
+                dpi(extraFontSize),
+                L"zh-CN",
+                &m_dwriteExtraTextFormat
+            );
+
+            cachedExtraFontWeight = extraFontWeight;
+            cachedExtraFontStyle = extraFontStyle;
+            cachedExtraFontSize = extraFontSize;
+        }
+
+        if (extraFormatChanged ||
+            layoutChanged ||
+            extraLyrics != cachedExtraLyrics ||
+            extraTextAlign != cachedExtraTextAlign ||
+            extraUnderline != cachedExtraUnderline ||
+            extraStrikethrough != cachedExtraStrikethrough ||
+            !m_dwriteExtraTextLayout)
+        {
+            if (m_dwriteExtraTextLayout) { m_dwriteExtraTextLayout->Release(); m_dwriteExtraTextLayout = nullptr; }
+
+            float layoutWidth = (std::max)(0.0f, width - dpi(10));
+            float layoutHeight = (std::max)(0.0f, height - height / 2.0f - dpi(5));
+
+            m_dwriteFactory->CreateTextLayout(
+                extraLyrics.c_str(),
+                (UINT32)extraLyrics.size(),
+                m_dwriteExtraTextFormat,
+                layoutWidth,
+                layoutHeight,
+                &m_dwriteExtraTextLayout
+            );
+
+            DWRITE_TRIMMING trimming = { DWRITE_TRIMMING_GRANULARITY_CHARACTER, 0, 0 };
+            m_dwriteExtraTextLayout->SetTrimming(&trimming, nullptr);
+            m_dwriteExtraTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+            m_dwriteExtraTextLayout->SetTextAlignment(extraTextAlign);
+            m_dwriteExtraTextLayout->SetUnderline(extraUnderline, DWRITE_TEXT_RANGE{ 0, (UINT32)extraLyrics.size() });
+            m_dwriteExtraTextLayout->SetStrikethrough(extraStrikethrough, DWRITE_TEXT_RANGE{ 0, (UINT32)extraLyrics.size() });
+
+            cachedExtraLyrics = extraLyrics;
+            cachedExtraTextAlign = extraTextAlign;
+            cachedExtraUnderline = extraUnderline;
+            cachedExtraStrikethrough = extraStrikethrough;
+        }
+    }
+    else
+    {
+        // Release extra resources if not needed
+        if (m_dwriteExtraTextFormat) { m_dwriteExtraTextFormat->Release(); m_dwriteExtraTextFormat = nullptr; }
+        if (m_dwriteExtraTextLayout) { m_dwriteExtraTextLayout->Release(); m_dwriteExtraTextLayout = nullptr; }
+    }
+
+    cachedLayoutWidth = width;
+    cachedLayoutHeight = height;
+    cachedIsDoubleLine = isDoubleLine;
+}
+
 void LyricsRenderer::drawLyrics(HDC& hdc, RECT& rect)
 {
     m_d2dRenderTarget->BindDC(hdc, &rect);
     m_d2dRenderTarget->BeginDraw();
+    m_d2dRenderTarget->Clear(D2D1::ColorF(0, 0.0f));
 
-    DWRITE_TRIMMING trimming = {
-        DWRITE_TRIMMING_GRANULARITY_CHARACTER,
-        0,
-        0
-    };
+    updateResources((float)(rect.right - rect.left), (float)(rect.bottom - rect.top));
 
-    if (extraLyrics.empty())
-    {
-        D2D1_RECT_F basicRect = D2D1::RectF(
-            (std::max)(0.0f, rect.left + dpi(10)),
-            (std::max)(0.0f, rect.top + dpi(10)),
-            (std::max)(0.0f, rect.right - dpi(10)),
-            (std::max)(0.0f, rect.bottom - dpi(10))
-        );
-
-        basicRect.right = (std::max)(basicRect.right, basicRect.left);
-        basicRect.bottom = (std::max)(basicRect.bottom, basicRect.top);
-
-        // Create Text Format
-        m_dwriteFactory->CreateTextFormat(
-            fontFamily.c_str(),
-            nullptr,
-            basicFontWeight,
-            basicFontStyle,
-            DWRITE_FONT_STRETCH_NORMAL,
-            dpi(basicFontSize),
-            L"zh-CN",
-            &m_dwriteBasicTextFormat
-        );
-
-        // Create Text Layout
-        m_dwriteFactory->CreateTextLayout(
-            basicLyrics.c_str(),
-            (UINT32)basicLyrics.size(),
-            m_dwriteBasicTextFormat,
-            (float)(basicRect.right - basicRect.left),
-            (float)(basicRect.bottom - basicRect.top),
-            &m_dwriteBasicTextLayout
-        );
-
-        m_dwriteBasicTextLayout->SetTrimming(&trimming, nullptr);
-        m_dwriteBasicTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-        m_dwriteBasicTextLayout->SetTextAlignment(basicTextAlign);
-        m_dwriteBasicTextLayout->SetUnderline(basicUnderline, DWRITE_TEXT_RANGE{0, (UINT32)basicLyrics.size()});
-        m_dwriteBasicTextLayout->SetStrikethrough(basicStrikethrough, DWRITE_TEXT_RANGE{0, (UINT32)basicLyrics.size()});
-        m_d2dSolidBrush->SetColor(isLightMode ? basicLightColor : basicDarkColor);
-
-        // Draw Text
-        m_d2dRenderTarget->DrawTextLayout(
-            D2D1::Point2F(basicRect.left, basicRect.top),
-            m_dwriteBasicTextLayout,
-            m_d2dSolidBrush,
-            D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
-        );
-
-        if (m_dwriteBasicTextFormat) { m_dwriteBasicTextFormat->Release(); m_dwriteBasicTextFormat = nullptr; }
-        if (m_dwriteBasicTextLayout) { m_dwriteBasicTextLayout->Release(); m_dwriteBasicTextLayout = nullptr; }
-    }
-    else
-    {
-        D2D1_RECT_F basicRect = D2D1::RectF(
-            (std::max)(0.0f, rect.left + dpi(5)),
-            (std::max)(0.0f, rect.top + dpi(5)),
-            (std::max)(0.0f, rect.right - dpi(5)),
-            (std::max)(0.0f, rect.bottom / 2.0f)
-        );
-
-        basicRect.right = (std::max)(basicRect.right, basicRect.left);
-        basicRect.bottom = (std::max)(basicRect.bottom, basicRect.top);
-
-        // Create Text Format (Double Line)
-        m_dwriteFactory->CreateTextFormat(
-            fontFamily.c_str(),
-            nullptr,
-            basicFontWeight,
-            basicFontStyle,
-            DWRITE_FONT_STRETCH_NORMAL,
-            dpi(basicFontSizeDoubleLine),
-            L"zh-CN",
-            &m_dwriteBasicTextFormat
-        );
-
-        // Create Text Layout
-        m_dwriteFactory->CreateTextLayout(
-            basicLyrics.c_str(),
-            (UINT32)basicLyrics.size(),
-            m_dwriteBasicTextFormat,
-            (float)(basicRect.right - basicRect.left),
-            (float)(basicRect.bottom - basicRect.top),
-            &m_dwriteBasicTextLayout
-        );
-
-        m_dwriteBasicTextLayout->SetTrimming(&trimming, nullptr);
-        m_dwriteBasicTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-        m_dwriteBasicTextLayout->SetTextAlignment(basicTextAlign);
-        m_dwriteBasicTextLayout->SetUnderline(basicUnderline, DWRITE_TEXT_RANGE{0, (UINT32)basicLyrics.size()});
-        m_dwriteBasicTextLayout->SetStrikethrough(basicStrikethrough, DWRITE_TEXT_RANGE{0, (UINT32)basicLyrics.size()});
-        m_d2dSolidBrush->SetColor(isLightMode ? basicLightColor : basicDarkColor);
-
-        // Draw Text
-        m_d2dRenderTarget->DrawTextLayout(
-            D2D1::Point2F(basicRect.left, basicRect.top),
-            m_dwriteBasicTextLayout,
-            m_d2dSolidBrush,
-            D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
-        );
-
-        /******************************************/
-
-        D2D1_RECT_F extraRect = D2D1::RectF(
-            (std::max)(0.0f, rect.left + dpi(5)),
-            (std::max)(0.0f, rect.bottom / 2.0f),
-            (std::max)(0.0f, rect.right - dpi(5)),
-            (std::max)(0.0f, rect.bottom - dpi(5))
-        );
-
-        extraRect.right = (std::max)(extraRect.right, extraRect.left);
-        extraRect.bottom = (std::max)(extraRect.bottom, extraRect.top);
-
-        // Create Text Format
-        m_dwriteFactory->CreateTextFormat(
-            fontFamily.c_str(),
-            nullptr,
-            extraFontWeight,
-            extraFontStyle,
-            DWRITE_FONT_STRETCH_NORMAL,
-            dpi(extraFontSize),
-            L"zh-CN",
-            &m_dwriteExtraTextFormat
-        );
-
-        // Create Text Layout
-        m_dwriteFactory->CreateTextLayout(
-            extraLyrics.c_str(),
-            (UINT32)extraLyrics.size(),
-            m_dwriteExtraTextFormat,
-            (float)(extraRect.right - extraRect.left),
-            (float)(extraRect.bottom - extraRect.top),
-            &m_dwriteExtraTextLayout
-        );
-
-        m_dwriteExtraTextLayout->SetTrimming(&trimming, nullptr);
-        m_dwriteExtraTextLayout->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-        m_dwriteExtraTextLayout->SetTextAlignment(extraTextAlign);
-        m_dwriteExtraTextLayout->SetUnderline(extraUnderline, DWRITE_TEXT_RANGE{0, (UINT32)extraLyrics.size()});
-        m_dwriteExtraTextLayout->SetStrikethrough(extraStrikethrough, DWRITE_TEXT_RANGE{0, (UINT32)extraLyrics.size()});
+    // Draw Basic
+    if (m_dwriteBasicTextLayout) {
+        float left, top;
+        if (!cachedIsDoubleLine) {
+             left = (float)rect.left + dpi(10);
+             top = (float)rect.top + dpi(10);
+        } else {
+             left = (float)rect.left + dpi(5);
+             top = (float)rect.top + dpi(5);
+        }
         
-        m_d2dSolidBrush->SetColor(isLightMode ? extraLightColor : extraDarkColor);
-
-        // Draw Text
+        m_d2dSolidBrush->SetColor(isLightMode ? basicLightColor : basicDarkColor);
         m_d2dRenderTarget->DrawTextLayout(
-            D2D1::Point2F(extraRect.left, extraRect.top),
+            D2D1::Point2F(left, top),
+            m_dwriteBasicTextLayout,
+            m_d2dSolidBrush,
+            D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+        );
+    }
+
+    // Draw Extra
+    if (cachedIsDoubleLine && m_dwriteExtraTextLayout) {
+        float left = (float)rect.left + dpi(5);
+        float top = (float)rect.bottom / 2.0f;
+
+        m_d2dSolidBrush->SetColor(isLightMode ? extraLightColor : extraDarkColor);
+        m_d2dRenderTarget->DrawTextLayout(
+            D2D1::Point2F(left, top),
             m_dwriteExtraTextLayout,
             m_d2dSolidBrush,
             D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
         );
-
-        if (m_dwriteBasicTextFormat) { m_dwriteBasicTextFormat->Release(); m_dwriteBasicTextFormat = nullptr; }
-        if (m_dwriteBasicTextLayout) { m_dwriteBasicTextLayout->Release(); m_dwriteBasicTextLayout = nullptr; }
-        if (m_dwriteExtraTextFormat) { m_dwriteExtraTextFormat->Release(); m_dwriteExtraTextFormat = nullptr; }
-        if (m_dwriteExtraTextLayout) { m_dwriteExtraTextLayout->Release(); m_dwriteExtraTextLayout = nullptr; }
     }
 
     m_d2dRenderTarget->EndDraw();

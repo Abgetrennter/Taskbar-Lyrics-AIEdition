@@ -82,6 +82,31 @@ private:
     IDWriteTextFormat* m_dwriteExtraTextFormat = nullptr;
     IDWriteTextLayout* m_dwriteExtraTextLayout = nullptr;
 
+    // Cached state for TextFormat and TextLayout
+    std::wstring cachedFontFamily;
+    DWRITE_FONT_WEIGHT cachedBasicFontWeight;
+    DWRITE_FONT_STYLE cachedBasicFontStyle;
+    float cachedBasicFontSize = -1.0f;
+    float cachedBasicFontSizeDoubleLine = -1.0f;
+    
+    DWRITE_FONT_WEIGHT cachedExtraFontWeight;
+    DWRITE_FONT_STYLE cachedExtraFontStyle;
+    float cachedExtraFontSize = -1.0f;
+
+    std::wstring cachedBasicLyrics;
+    std::wstring cachedExtraLyrics;
+    DWRITE_TEXT_ALIGNMENT cachedBasicTextAlign;
+    DWRITE_TEXT_ALIGNMENT cachedExtraTextAlign;
+    bool cachedBasicUnderline;
+    bool cachedExtraUnderline;
+    bool cachedBasicStrikethrough;
+    bool cachedExtraStrikethrough;
+    
+    float cachedLayoutWidth = -1.0f;
+    float cachedLayoutHeight = -1.0f;
+    bool cachedIsDoubleLine = false; // To track if we were in double line mode
+
+    void updateResources(float width, float height);
     void drawWindow(long left, long top, long width, long height);
     void drawLyrics(HDC& hdc, RECT& rect);
     float dpi(float pixelSize);
