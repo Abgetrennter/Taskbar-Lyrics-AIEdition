@@ -58,10 +58,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)\dist\</OutDir>
     <IntDir>$(Configuration)\taskbar-lyrics\</IntDir>
+    <TargetName>任务栏歌词</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)\dist_debug\</OutDir>
     <IntDir>$(Configuration)\taskbar-lyrics\</IntDir>
+    <TargetName>任务栏歌词</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

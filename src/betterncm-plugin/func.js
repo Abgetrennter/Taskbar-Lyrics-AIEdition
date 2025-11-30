@@ -26,9 +26,9 @@ plugin.onLoad(async () => {
 
         console.log(`Taskbar Lyrics: Starting backend. DataPath: ${dataPath}, PluginPath: ${pluginPath}`);
 
-        const taskkill = `taskkill /F /IM "taskbar-lyrics.exe"`;
-        const xcopy = `xcopy /C /D /Y "${pluginPath}\\taskbar-lyrics.exe" "${dataPath}"`;
-        const exec = `"${dataPath}\\taskbar-lyrics.exe" ${TaskbarLyricsPort}`;
+        const taskkill = `taskkill /F /IM "任务栏歌词.exe"`;
+        const xcopy = `xcopy /C /D /Y "${pluginPath}\\任务栏歌词.exe" "${dataPath}"`;
+        const exec = `"${dataPath}\\任务栏歌词.exe" ${TaskbarLyricsPort}`;
         // Use & for xcopy and exec to ensure exec runs even if xcopy fails (e.g. file locked)
         const cmd = `${taskkill} & ${xcopy} & ${exec}`;
         
