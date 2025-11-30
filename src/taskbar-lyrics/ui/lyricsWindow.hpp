@@ -23,7 +23,7 @@ private:
     std::thread* m_registryMonitorThread = nullptr;
     void monitorRegistry();
 
-    std::wstring m_windowClassName = L"betterncm_taskbar_lyrics";
+    std::wstring m_windowClassName = L"测试";
     std::wstring m_windowName = L"BetterNCM Taskbar Lyrics";
 
     void registerWindow(HINSTANCE instanceHandle);

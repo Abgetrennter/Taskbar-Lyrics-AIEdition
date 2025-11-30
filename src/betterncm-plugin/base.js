@@ -61,12 +61,39 @@ plugin.onLoad(async () => {
                         () => { },
                         [{
                             title: "任务栏歌词",
-                            text: "无法连接到任务栏歌词后端程序。\n请检查程序是否运行。",
+                            text: "无法连接到任务栏歌词后端程序。\n尝试自动重启...",
                             icon: "path",
                             hasSound: false,
                             delayTime: 3000
                         }]
                     );
+                }
+
+                if (this.base.restartBackend) {
+                    let flag=false;
+                    console.log("Taskbar Lyrics: Triggering backend restart...");
+                    this.base.restartBackend().then(() => {
+                        console.log("Taskbar Lyrics: Backend restart command executed.");
+                        flag=true;
+                    }).catch(e => {
+                        console.error("Taskbar Lyrics: Backend restart failed", e);
+                        flag=false;
+                    });
+                    channel.call(
+                        "trayicon.popBalloon",
+                        () => { },
+                        [{
+                            title: "任务栏歌词",
+                            text: "自动重启"+(flag ? "成功" : "失败"),
+                            icon: "path",
+                            hasSound: false,
+                            delayTime: 3000
+                        }]
+                    );
+
+                    retryCount = 0; 
+                } else {
+                    console.error("Taskbar Lyrics: restartBackend function not found in this.base");
                 }
             }
 

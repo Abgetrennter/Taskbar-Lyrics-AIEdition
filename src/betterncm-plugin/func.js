@@ -16,22 +16,40 @@ plugin.onLoad(async () => {
     const TaskbarLyricsStart = async () => {
         // 这BetterNCM获取的路径是不标准的会出问题，要替换掉下面那俩字符
         const dataPath = (await betterncm.app.getDataPath()).replace("/", "\\");
-        const pluginPath = this.pluginPath.replace("/./", "\\").replace("/", "\\");
+        
+        let pluginPath = this.pluginPath;
+        if (!pluginPath) {
+            console.warn("Taskbar Lyrics: this.pluginPath is undefined, trying to get from plugin object");
+            pluginPath = plugin.pluginPath;
+        }
+        pluginPath = pluginPath.replace("/./", "\\").replace("/", "\\");
+
+        console.log(`Taskbar Lyrics: Starting backend. DataPath: ${dataPath}, PluginPath: ${pluginPath}`);
+
         const taskkill = `taskkill /F /IM "taskbar-lyrics.exe"`;
         const xcopy = `xcopy /C /D /Y "${pluginPath}\\taskbar-lyrics.exe" "${dataPath}"`;
         const exec = `"${dataPath}\\taskbar-lyrics.exe" ${TaskbarLyricsPort}`;
-        const cmd = `${taskkill} & ${xcopy} && ${exec}`;
-        await betterncm.app.exec(`cmd /S /C ${cmd}`, false, false);
-        TaskbarLyricsAPI.font.font(pluginConfig.get("font"));
-        TaskbarLyricsAPI.font.color(pluginConfig.get("color"));
-        TaskbarLyricsAPI.font.style(pluginConfig.get("style"));
-        TaskbarLyricsAPI.font.size(pluginConfig.get("size"));
-        TaskbarLyricsAPI.window.position(pluginConfig.get("position"));
-        TaskbarLyricsAPI.window.margin(pluginConfig.get("margin"));
-        TaskbarLyricsAPI.lyrics.align(pluginConfig.get("align"));
-        TaskbarLyricsAPI.window.screen(pluginConfig.get("screen"));
-        startGetLyric();
+        // Use & for xcopy and exec to ensure exec runs even if xcopy fails (e.g. file locked)
+        const cmd = `${taskkill} & ${xcopy} & ${exec}`;
+        
+        try {
+            await betterncm.app.exec(`cmd /S /C ${cmd}`, false, false);
+            TaskbarLyricsAPI.font.font(pluginConfig.get("font"));
+            TaskbarLyricsAPI.font.color(pluginConfig.get("color"));
+            TaskbarLyricsAPI.font.style(pluginConfig.get("style"));
+            TaskbarLyricsAPI.font.size(pluginConfig.get("size"));
+            TaskbarLyricsAPI.window.position(pluginConfig.get("position"));
+            TaskbarLyricsAPI.window.margin(pluginConfig.get("margin"));
+            TaskbarLyricsAPI.lyrics.align(pluginConfig.get("align"));
+            TaskbarLyricsAPI.window.screen(pluginConfig.get("screen"));
+            startGetLyric();
+        } catch (e) {
+            console.error("Taskbar Lyrics: Failed to start backend", e);
+        }
     };
+
+    // 注册重启回调
+    this.base.restartBackend = TaskbarLyricsStart;
 
 
     // 关闭任务栏歌词软件
