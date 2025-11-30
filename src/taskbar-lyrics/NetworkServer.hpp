@@ -15,9 +15,23 @@ private:
     class 任务栏窗口类* 任务栏窗口 = nullptr;
     std::thread* 网络服务器_线程 = nullptr;
     bool 运行中 = false;
+    
+    // 心跳检测
+    std::thread* 心跳检测_线程 = nullptr;
+    long long 上次心跳时间 = 0;
+    void 心跳检测函数();
 
 private:
     std::wstring_convert<std::codecvt_utf8<wchar_t>> 字符转换;
+
+    // WebSocket 辅助
+    bool 是WebSocket请求(const std::string& request);
+    void WebSocket握手(SOCKET clientSocket, const std::string& request);
+    std::string 计算WebSocketKey(const std::string& key);
+    bool 读取WebSocket帧(SOCKET clientSocket, std::string& outMessage);
+    
+    // Base64 & SHA1 (简单实现或调用API)
+    std::string Base64Encode(const unsigned char* data, size_t len);
 
 public:
     网络服务器类(class 任务栏窗口类*, unsigned short);

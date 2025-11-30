@@ -15,16 +15,95 @@ plugin.onLoad(async () => {
         }, {});
     }
 
-    const TaskbarLyricsFetch = (path, params) => fetch(
-        `http://127.0.0.1:${TaskbarLyricsPort}/taskbar${path}`,
-        {
-            method: "POST",
-            body: JSON.stringify(flattenObject(params)),
-            headers: {
-                "Content-Type": "application/json"
-            }
+    let socket = null;
+    let heartbeatInterval = null;
+    let reconnectTimeout = null;
+    let retryCount = 0;
+    let messageQueue = [];
+
+    const connectWebSocket = () => {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+            return;
         }
-    );
+
+        socket = new WebSocket(`ws://127.0.0.1:${TaskbarLyricsPort}`);
+
+        socket.onopen = () => {
+            console.log("Taskbar Lyrics: WebSocket connected");
+            retryCount = 0;
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            
+            // Flush queue
+            while (messageQueue.length > 0) {
+                const msg = messageQueue.shift();
+                socket.send(msg);
+            }
+
+            // Start heartbeat
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ url: "/taskbar/heartbeat" }));
+                }
+            }, 5000);
+        };
+
+        socket.onclose = () => {
+            console.log("Taskbar Lyrics: WebSocket closed, reconnecting in 3s...");
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            
+            retryCount++;
+            if (retryCount === 5) {
+                // Notify user if backend seems down
+                if (typeof channel !== 'undefined' && channel.call) {
+                    channel.call(
+                        "trayicon.popBalloon",
+                        () => { },
+                        [{
+                            title: "任务栏歌词",
+                            text: "无法连接到任务栏歌词后端程序。\n请检查程序是否运行。",
+                            icon: "path",
+                            hasSound: false,
+                            delayTime: 3000
+                        }]
+                    );
+                }
+            }
+
+            reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        };
+
+        socket.onerror = (err) => {
+            console.error("Taskbar Lyrics: WebSocket error", err);
+            socket.close();
+        };
+    };
+
+    // Initial connection
+    connectWebSocket();
+
+    const TaskbarLyricsFetch = (path, params) => {
+        const payload = flattenObject(params);
+        payload.url = "/taskbar" + path;
+        const msg = JSON.stringify(payload);
+        
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(msg);
+        } else {
+            // If it's a lyric update, remove previous lyric updates from queue to avoid buildup
+            if (payload.url === "/taskbar/lyrics/lyrics") {
+                messageQueue = messageQueue.filter(m => !m.includes('"/taskbar/lyrics/lyrics"'));
+            }
+            
+            messageQueue.push(msg);
+            
+            // Cap queue size just in case
+            if (messageQueue.length > 100) messageQueue.shift();
+
+            // If not connected, try to reconnect (throttled by connectWebSocket logic)
+            connectWebSocket();
+        }
+    };
 
     const TaskbarLyricsAPI = {
         // 字体设置
