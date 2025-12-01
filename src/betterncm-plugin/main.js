@@ -493,6 +493,19 @@ class LyricManager {
                 lyricData?.romalrc?.lyric ?? "",
                 lyricData?.yrc?.lyric ?? ""
             );
+
+            if (lyricData?.yrc?.lyric) {
+                const yrcLines = this.parseYrc(lyricData.yrc.lyric);
+                if (yrcLines.length > 0) {
+                    for (const line of this.parsedLyric) {
+                        const yrcLine = yrcLines.find(l => Math.abs(l.time - line.time) < 100);
+                        if (yrcLine) {
+                            line.dynamicLyric = yrcLine.dynamicLyric;
+                            if (yrcLine.duration > 0) line.duration = yrcLine.duration;
+                        }
+                    }
+                }
+            }
         }
 
         if (this.parsedLyric) {
@@ -509,6 +522,76 @@ class LyricManager {
         }
 
         this.currentIndex = 0;
+    }
+
+    parseYrc(lyric) {
+        const result = [];
+        const yrcLineRegexp = /^\[(?<time>[0-9]+),(?<duration>[0-9]+)\](?<line>.*)/;
+        const yrcWordTimeRegexp = /^\((?<time>[0-9]+),(?<duration>[0-9]+),(?<flag>[0-9]+)\)(?<word>[^\(]*)/;
+
+        for (const line of lyric.trim().split("\n")) {
+            let tmp = line.trim();
+            const lineMatches = tmp.match(yrcLineRegexp);
+            if (lineMatches) {
+                const time = parseInt(lineMatches.groups?.time || "0");
+                const duration = parseInt(lineMatches.groups?.duration || "0");
+                tmp = lineMatches.groups?.line || "";
+                const words = [];
+                
+                while (tmp.length > 0) {
+                    const wordMatches = tmp.match(yrcWordTimeRegexp);
+                    if (wordMatches) {
+                        const wordTime = parseInt(wordMatches.groups?.time || "0");
+                        const wordDuration = parseInt(wordMatches.groups?.duration || "0");
+                        const flag = parseInt(wordMatches.groups?.flag || "0");
+                        const word = wordMatches.groups?.word.trimStart();
+                        
+                        const splitedWords = word
+                            ?.split(/\s+/)
+                            .filter((v) => v.trim().length > 0);
+                        
+                        if (splitedWords && splitedWords.length > 0) {
+                            const splitedDuration = wordDuration / splitedWords.length;
+                            splitedWords.forEach((subWord, i) => {
+                                let finalWord = subWord;
+                                if (i === splitedWords.length - 1) {
+                                     if (/\s/.test((word ?? '')[(word ?? '').length - 1])) {
+                                         finalWord = `${subWord.trimStart()} `;
+                                     } else {
+                                         finalWord = subWord.trimStart();
+                                     }
+                                } else if (i === 0) {
+                                     if (/\s/.test((word ?? '')[0])) {
+                                          finalWord = ` ${subWord.trimStart()}`;
+                                     } else {
+                                          finalWord = subWord.trimStart();
+                                     }
+                                } else {
+                                     finalWord = `${subWord.trimStart()} `;
+                                }
+
+                                words.push({
+                                    time: wordTime + i * splitedDuration,
+                                    duration: splitedDuration,
+                                    flag,
+                                    word: finalWord
+                                });
+                            });
+                        }
+                        
+                        tmp = tmp.slice((wordMatches.index || 0) + wordMatches[0].length);
+                    } else {
+                        break;
+                    }
+                }
+                result.push({
+                    time,
+                    duration,
+                    dynamicLyric: words
+                });
+            }
+        }
+        return result;
     }
 
     /**
@@ -562,8 +645,33 @@ class LyricManager {
                 }
 
                 if (duration > 0) {
-                    const p = (currentTime - startTime) / duration;
-                    basicProgress = Math.max(0, Math.min(1, p));
+                    if (currentLyric.dynamicLyric) {
+                        let passedLen = 0;
+                        let totalLen = 0;
+                        let currentWordProgress = 0;
+
+                        for (const word of currentLyric.dynamicLyric) {
+                             totalLen += word.word.length;
+                             const wordEndTime = word.time + word.duration;
+                             
+                             if (currentTime >= wordEndTime) {
+                                 passedLen += word.word.length;
+                             } else if (currentTime >= word.time) {
+                                 const wp = (currentTime - word.time) / word.duration;
+                                 currentWordProgress = Math.max(0, Math.min(1, wp)) * word.word.length;
+                             }
+                        }
+                        
+                        if (totalLen > 0) {
+                            basicProgress = (passedLen + currentWordProgress) / totalLen;
+                        } else {
+                             const p = (currentTime - startTime) / duration;
+                             basicProgress = Math.max(0, Math.min(1, p));
+                        }
+                    } else {
+                        const p = (currentTime - startTime) / duration;
+                        basicProgress = Math.max(0, Math.min(1, p));
+                    }
                 } else {
                     basicProgress = (currentTime >= startTime) ? 1 : 0;
                 }
