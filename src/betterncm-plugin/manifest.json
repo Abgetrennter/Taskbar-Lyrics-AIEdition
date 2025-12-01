@@ -3,8 +3,8 @@
     "name": "任务栏歌词",
     "slug": "Taskbar-Lyrics",
     "description": "在任务栏上嵌入歌词，目前仅建议Windows 11，且任务栏未被第三方软件修改",
-    "preview": "preview.png",
-    "version": "1.6.4",
+    "preview": "assets/preview.png",
+    "version": "1.6.5",
     "author": "沫烬染",
     "author_links": [
         "https://github.com/mo-jinran"
@@ -20,16 +20,7 @@
     "injects": {
         "Main": [
             {
-                "file": "base.js"
-            },
-            {
-                "file": "lyric.js"
-            },
-            {
-                "file": "func.js"
-            },
-            {
-                "file": "view.js"
+                "file": "main.js"
             }
         ]
     }

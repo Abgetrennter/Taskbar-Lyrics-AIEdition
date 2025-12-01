@@ -11,16 +11,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\betterncm-plugin\base.js" />
-    <None Include="src\betterncm-plugin\config.html" />
-    <None Include="src\betterncm-plugin\func.js" />
-    <None Include="src\betterncm-plugin\lyric.js" />
+    <None Include="src\betterncm-plugin\main.js" />
     <None Include="src\betterncm-plugin\manifest.json" />
-    <None Include="src\betterncm-plugin\style.css" />
-    <None Include="src\betterncm-plugin\view.js" />
+    <None Include="src\betterncm-plugin\assets\config.html" />
+    <None Include="src\betterncm-plugin\assets\style.css" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\betterncm-plugin\preview.png" />
+    <Image Include="src\betterncm-plugin\assets\preview.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -85,9 +82,11 @@
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>copy src\betterncm-plugin\index.js dist_debug
+      <Command>powershell -ExecutionPolicy Bypass -File src\betterncm-plugin\build.ps1
+copy src\betterncm-plugin\main.js dist_debug
 copy src\betterncm-plugin\manifest.json dist_debug
-copy src\betterncm-plugin\preview.png dist_debug</Command>
+if not exist dist_debug\assets md dist_debug\assets
+copy src\betterncm-plugin\assets\* dist_debug\assets</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -110,7 +109,11 @@ copy src\betterncm-plugin\preview.png dist_debug</Command>
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>copy src\betterncm-plugin\* dist</Command>
+      <Command>powershell -ExecutionPolicy Bypass -File src\betterncm-plugin\build.ps1
+copy src\betterncm-plugin\main.js dist
+copy src\betterncm-plugin\manifest.json dist
+if not exist dist\assets md dist\assets
+copy src\betterncm-plugin\assets\* dist\assets</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
