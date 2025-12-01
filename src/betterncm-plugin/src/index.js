@@ -1,16 +1,23 @@
 "use strict";
 
+/**
+ * @module 插件入口
+ * @description 插件的入口文件，负责初始化各个模块，处理生命周期事件，集成后端管理和视图逻辑
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
+
 plugin.onConfig(tools => configView.getElement());
 
 plugin.onLoad(async () => {
-    // Initialize Backend Manager with plugin path
+    // 初始化后端管理器
     backendManager.setPluginPath(plugin.pluginPath);
     
-    // Initialize View
+    // 初始化视图
     configView.setPluginPath(plugin.pluginPath);
     await configView.init();
 
-    // Setup Restart Logic
+    // 设置重启逻辑
     apiInstance.on('onClose', async (retryCount) => {
         if (retryCount === 5) {
              if (typeof channel !== 'undefined' && channel.call) {
@@ -45,11 +52,11 @@ plugin.onLoad(async () => {
         }
     });
 
-    // Close on unload
+    // 插件卸载时关闭后端
     addEventListener("beforeunload", async () => {
         await backendManager.close();
     });
 
-    // Start Backend
+    // 启动后端
     await backendManager.start();
 });

@@ -1,5 +1,12 @@
 "use strict";
 
+/**
+ * @module 配置管理
+ * @description 定义插件的默认配置，并提供配置的读取和保存功能
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
+
 const defaultConfig = {
     "font": {
         "font_family": "Microsoft YaHei UI"
@@ -90,6 +97,19 @@ const defaultConfig = {
 };
 
 const ConfigManager = {
+    /**
+     * 获取配置
+     * @description 获取指定名称的配置，如果不存在则返回默认配置
+     * @param {string} name - 配置名称
+     * @returns {Object} 配置对象
+     */
     get: name => Object.assign({}, defaultConfig[name], plugin.getConfig(name, defaultConfig[name])),
+    
+    /**
+     * 保存配置
+     * @description 保存指定名称的配置
+     * @param {string} name - 配置名称
+     * @param {Object} value - 配置值
+     */
     set: (name, value) => plugin.setConfig(name, value)
 };

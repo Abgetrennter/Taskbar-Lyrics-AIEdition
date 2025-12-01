@@ -1,19 +1,28 @@
 ﻿"use strict";
 
+/**
+ * @module 常量定义
+ * @description 定义插件使用的常量和枚举值，包括对齐方式、字体权重、字体样式等
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 const WindowsEnum = {
+    // 窗口对齐方式
     WindowAlignment: {
-        WindowAlignmentAdaptive: 0,
-        WindowAlignmentLeft: 1,
-        WindowAlignmentCenter: 2,
-        WindowAlignmentRight: 3
+        WindowAlignmentAdaptive: 0, // 自适应
+        WindowAlignmentLeft: 1,     // 左对齐
+        WindowAlignmentCenter: 2,   // 居中
+        WindowAlignmentRight: 3     // 右对齐
     },
+    // DirectWrite 文本对齐方式
     DWRITE_TEXT_ALIGNMENT: {
-        DWRITE_TEXT_ALIGNMENT_LEADING: 0,
-        DWRITE_TEXT_ALIGNMENT_TRAILING: 1,
-        DWRITE_TEXT_ALIGNMENT_CENTER: 2,
-        DWRITE_TEXT_ALIGNMENT_JUSTIFIED: 3
+        DWRITE_TEXT_ALIGNMENT_LEADING: 0,   // 左对齐
+        DWRITE_TEXT_ALIGNMENT_TRAILING: 1,  // 右对齐
+        DWRITE_TEXT_ALIGNMENT_CENTER: 2,    // 居中
+        DWRITE_TEXT_ALIGNMENT_JUSTIFIED: 3  // 两端对齐
     },
+    // DirectWrite 字体粗细
     DWRITE_FONT_WEIGHT: {
         DWRITE_FONT_WEIGHT_THIN: 100,
         DWRITE_FONT_WEIGHT_EXTRA_LIGHT: 200,
@@ -33,16 +42,30 @@ const WindowsEnum = {
         DWRITE_FONT_WEIGHT_EXTRA_BLACK: 950,
         DWRITE_FONT_WEIGHT_ULTRA_BLACK: 950
     },
+    // DirectWrite 字体样式
     DWRITE_FONT_STYLE: {
-        DWRITE_FONT_STYLE_NORMAL: 0,
-        DWRITE_FONT_STYLE_OBLIQUE: 1,
-        DWRITE_FONT_STYLE_ITALIC: 2
+        DWRITE_FONT_STYLE_NORMAL: 0,    // 正常
+        DWRITE_FONT_STYLE_OBLIQUE: 1,   // 倾斜
+        DWRITE_FONT_STYLE_ITALIC: 2     // 斜体
     }
 };
 
 
+/**
+ * @module 工具函数
+ * @description 提供通用的工具函数，如对象扁平化、防抖、延时等
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 const Utils = {
+    /**
+     * 扁平化对象
+     * @description 将嵌套的对象转换为单层对象，键名使用前缀拼接
+     * @param {Object} obj - 需要扁平化的对象
+     * @param {string} [prefix=''] - 键名前缀
+     * @returns {Object} 扁平化后的对象
+     */
     flattenObject: (obj, prefix = '') => {
         return Object.keys(obj).reduce((acc, k) => {
             const pre = prefix.length ? prefix + '_' : '';
@@ -54,6 +77,13 @@ const Utils = {
         }, {});
     },
     
+    /**
+     * 防抖函数
+     * @description 限制函数在一定时间内只能执行一次
+     * @param {Function} func - 需要执行的函数
+     * @param {number} wait - 等待时间（毫秒）
+     * @returns {Function} 包装后的函数
+     */
     debounce: (func, wait) => {
         let timeout;
         return function(...args) {
@@ -63,12 +93,24 @@ const Utils = {
         };
     },
 
+    /**
+     * 延时函数
+     * @description 返回一个Promise，在指定时间后resolve
+     * @param {number} ms - 延时时间（毫秒）
+     * @returns {Promise} Promise对象
+     */
     delay: (ms) => {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 };
 
 
+/**
+ * @module 配置管理
+ * @description 定义插件的默认配置，并提供配置的读取和保存功能
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 const defaultConfig = {
     "font": {
@@ -160,11 +202,30 @@ const defaultConfig = {
 };
 
 const ConfigManager = {
+    /**
+     * 获取配置
+     * @description 获取指定名称的配置，如果不存在则返回默认配置
+     * @param {string} name - 配置名称
+     * @returns {Object} 配置对象
+     */
     get: name => Object.assign({}, defaultConfig[name], plugin.getConfig(name, defaultConfig[name])),
+    
+    /**
+     * 保存配置
+     * @description 保存指定名称的配置
+     * @param {string} name - 配置名称
+     * @param {Object} value - 配置值
+     */
     set: (name, value) => plugin.setConfig(name, value)
 };
 
 
+/**
+ * @module API 通信模块
+ * @description 封装与任务栏歌词程序的 WebSocket 通信逻辑，包括自动重连、心跳保活和消息队列
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 class TaskbarLyricsAPI {
     constructor() {
@@ -181,6 +242,10 @@ class TaskbarLyricsAPI {
         };
     }
 
+    /**
+     * 建立 WebSocket 连接
+     * @description 初始化 WebSocket 连接，设置事件监听，处理断线重连
+     */
     connect() {
         if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
             return;
@@ -193,13 +258,13 @@ class TaskbarLyricsAPI {
             this.retryCount = 0;
             if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
-            // Flush queue
+            // 发送队列中的消息
             while (this.messageQueue.length > 0) {
                 const msg = this.messageQueue.shift();
                 this.socket.send(msg);
             }
 
-            // Start heartbeat
+            // 启动心跳检测
             if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = setInterval(() => {
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -218,6 +283,7 @@ class TaskbarLyricsAPI {
             
             this.callbacks.onClose.forEach(cb => cb(this.retryCount));
 
+            // 3秒后尝试重连
             this.reconnectTimeout = setTimeout(() => this.connect(), 3000);
         };
 
@@ -228,6 +294,12 @@ class TaskbarLyricsAPI {
         };
     }
 
+    /**
+     * 发送请求
+     * @description 发送数据到任务栏歌词程序，如果未连接则加入队列
+     * @param {string} path - API 路径
+     * @param {Object} params - 请求参数
+     */
     fetch(path, params) {
         const payload = Utils.flattenObject(params);
         payload.url = "/taskbar" + path;
@@ -236,13 +308,14 @@ class TaskbarLyricsAPI {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(msg);
         } else {
-            // If it's a lyric update, remove previous lyric updates from queue to avoid buildup
+            // 如果是歌词更新，移除旧的歌词更新消息，避免队列堆积
             if (payload.url === "/taskbar/lyrics/lyrics") {
                 this.messageQueue = this.messageQueue.filter(m => !m.includes('"/taskbar/lyrics/lyrics"'));
             }
 
             this.messageQueue.push(msg);
 
+            // 限制队列长度
             if (this.messageQueue.length > 100) this.messageQueue.shift();
 
             this.connect();
@@ -250,17 +323,73 @@ class TaskbarLyricsAPI {
     }
 
     // API Methods
+    
+    /**
+     * 设置字体
+     * @param {Object} params - 字体配置
+     */
     font(params) { this.fetch("/font/font", params); }
+
+    /**
+     * 设置颜色
+     * @param {Object} params - 颜色配置
+     */
     color(params) { this.fetch("/font/color", params); }
+
+    /**
+     * 设置样式
+     * @param {Object} params - 样式配置
+     */
     style(params) { this.fetch("/font/style", params); }
+
+    /**
+     * 设置大小
+     * @param {Object} params - 大小配置
+     */
     size(params) { this.fetch("/font/size", params); }
+
+    /**
+     * 发送歌词
+     * @param {Object} params - 歌词数据
+     */
     lyrics(params) { this.fetch("/lyrics/lyrics", params); }
+
+    /**
+     * 设置对齐
+     * @param {Object} params - 对齐配置
+     */
     align(params) { this.fetch("/lyrics/align", params); }
+
+    /**
+     * 设置窗口位置
+     * @param {Object} params - 位置配置
+     */
     windowPosition(params) { this.fetch("/window/position", params); }
+
+    /**
+     * 设置窗口边距
+     * @param {Object} params - 边距配置
+     */
     windowMargin(params) { this.fetch("/window/margin", params); }
+
+    /**
+     * 设置显示屏幕
+     * @param {Object} params - 屏幕配置
+     */
     windowScreen(params) { this.fetch("/window/screen", params); }
+
+    /**
+     * 关闭程序
+     * @param {Object} params - 参数
+     */
     close(params) { this.fetch("/close", params); }
 
+    /**
+     * 监听事件
+     * @description 注册事件回调
+     * @param {string} event - 事件名称 (onOpen, onClose, onError)
+     * @param {Function} callback - 回调函数
+     */
     on(event, callback) {
         if (this.callbacks[event]) {
             this.callbacks[event].push(callback);
@@ -271,6 +400,12 @@ class TaskbarLyricsAPI {
 const apiInstance = new TaskbarLyricsAPI();
 
 
+/**
+ * @module 歌词管理
+ * @description 负责歌词的获取、解析、处理和发送
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 class LyricManager {
     constructor() {
@@ -285,6 +420,10 @@ class LyricManager {
         this.boundPlayProgress = this.playProgress.bind(this);
     }
 
+    /**
+     * 监听内置歌词变化
+     * @description 使用 MutationObserver 监听网易云音乐内置歌词DOM的变化
+     */
     async watchLyricsChange() {
         const mLyric = await betterncm.utils.waitForElement("#x-g-mn .m-lyric");
         const MutationCallback = mutations => {
@@ -309,6 +448,10 @@ class LyricManager {
         this.observer.observe(mLyric, { childList: true, subtree: true });
     }
 
+    /**
+     * 歌曲加载处理
+     * @description 获取当前播放歌曲信息，初始化歌词
+     */
     async playLoad() {
         const playingSong = betterncm.ncm.getPlayingSong();
         this.musicId = playingSong.data.id ?? 0;
@@ -328,9 +471,9 @@ class LyricManager {
 
         const config = ConfigManager.get("lyrics");
         if ((config["retrieval_method"]["value"] == "2") && window.currentLyrics) {
-            // RefinedNowPlaying integration
+            // 集成 RefinedNowPlaying 插件
             let retries = 0;
-            while (retries < 50) { // Avoid infinite loop
+            while (retries < 50) { // 防止无限循环
                 if (window.currentLyrics.hash.includes(this.musicId)) {
                     this.parsedLyric = window.currentLyrics.lyrics;
                     break;
@@ -340,6 +483,7 @@ class LyricManager {
                 }
             }
         } else {
+            // 使用 LibLyric 获取歌词
             const lyricData = await this.liblyric.getLyricData(this.musicId);
             this.parsedLyric = this.liblyric.parseLyric(
                 lyricData?.lrc?.lyric ?? "",
@@ -351,7 +495,7 @@ class LyricManager {
         if (this.parsedLyric) {
             this.parsedLyric = this.parsedLyric.filter(item => item.originalLyric != "");
 
-            // Pure music check
+            // 纯音乐检查：如果只有一行且时间为0且有持续时间，视为纯音乐
             if (
                 (this.parsedLyric.length == 1)
                 && (this.parsedLyric[0].time == 0)
@@ -364,6 +508,12 @@ class LyricManager {
         this.currentIndex = 0;
     }
 
+    /**
+     * 播放进度更新
+     * @description 根据当前播放时间更新歌词显示
+     * @param {Object} _ - 事件对象（未使用）
+     * @param {number} time - 当前播放时间（秒）
+     */
     async playProgress(_, time) {
         const adjust = Number(ConfigManager.get("effect")["adjust"]);
         if (!this.parsedLyric) return;
@@ -387,25 +537,32 @@ class LyricManager {
         }
     }
 
+    /**
+     * 处理额外歌词显示
+     * @description 根据配置决定额外歌词（副歌词）显示的内容
+     * @param {Object} lyrics - 歌词对象
+     * @param {Object} currentLyric - 当前歌词行
+     * @param {Object} nextLyric - 下一行歌词
+     */
     processExtraShow(lyrics, currentLyric, nextLyric) {
         const extraShowValue = ConfigManager.get("effect")["extra_show"]["value"];
         
         switch (extraShowValue) {
-            case 0: // No extra
+            case 0: // 不显示副歌词
                 lyrics.extra = "";
                 break;
 
-            case 1: // Next line or swap
+            case 1: // 下一句歌词或交换显示
                 const nextLinePos = ConfigManager.get("effect")["next_line_lyrics_position"]["value"];
                 switch (nextLinePos) {
-                    case 0:
+                    case 0: // 副歌词显示下一句
                         lyrics.extra = nextLyric?.originalLyric ?? "";
                         break;
-                    case 1:
+                    case 1: // 主歌词显示下一句，副歌词显示当前句
                         lyrics.basic = nextLyric?.originalLyric ?? "";
                         lyrics.extra = currentLyric?.originalLyric ?? "";
                         break;
-                    case 2:
+                    case 2: // 轮流显示
                         if (this.currentLine == 0) {
                             lyrics.basic = currentLyric?.originalLyric ?? "";
                             lyrics.extra = nextLyric?.originalLyric ?? "";
@@ -419,11 +576,11 @@ class LyricManager {
                 }
                 break;
 
-            case 2: // Translation or next original
+            case 2: // 翻译或下一句原始内容
                 lyrics.extra = currentLyric?.translatedLyric ?? nextLyric?.originalLyric ?? "";
                 break;
 
-            case 3: // Roman or Translation or next original
+            case 3: // 罗马音或翻译或下一句原始内容
                 lyrics.extra = currentLyric?.romanLyric 
                     ?? currentLyric?.translatedLyric 
                     ?? nextLyric?.originalLyric 
@@ -432,15 +589,19 @@ class LyricManager {
         }
     }
 
+    /**
+     * 启动歌词处理
+     * @description 根据配置的获取方式启动相应的歌词处理逻辑
+     */
     start() {
         const config = ConfigManager.get("lyrics");
         const method = config["retrieval_method"]["value"];
 
         switch (method) {
-            case 0:
+            case 0: // 监听内置歌词
                 this.watchLyricsChange();
                 break;
-            case 1:
+            case 1: // LibLyric
                 legacyNativeCmder.appendRegisterCall("Load", "audioplayer", this.boundPlayLoad);
                 legacyNativeCmder.appendRegisterCall("PlayProgress", "audioplayer", this.boundPlayProgress);
                 const playingSong = betterncm.ncm.getPlayingSong();
@@ -448,13 +609,17 @@ class LyricManager {
                     this.playLoad();
                 }
                 break;
-            case 2:
+            case 2: // RefinedNowPlaying
                 legacyNativeCmder.appendRegisterCall("Load", "audioplayer", this.boundPlayLoad);
                 legacyNativeCmder.appendRegisterCall("PlayProgress", "audioplayer", this.boundPlayProgress);
                 break;
         }
     }
 
+    /**
+     * 停止歌词处理
+     * @description 清理监听器和回调
+     */
     stop() {
         const config = ConfigManager.get("lyrics");
         const method = config["retrieval_method"]["value"];
@@ -478,16 +643,30 @@ class LyricManager {
 const lyricManager = new LyricManager();
 
 
+/**
+ * @module 后端管理
+ * @description 负责后端程序的启动、关闭和重启，以及配置的初始应用
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 class BackendManager {
     constructor() {
         this.pluginPath = "";
     }
 
+    /**
+     * 设置插件路径
+     * @param {string} path - 插件根目录路径
+     */
     setPluginPath(path) {
         this.pluginPath = path;
     }
 
+    /**
+     * 启动后端程序
+     * @description 复制并运行后端可执行文件
+     */
     async start() {
         const dataPath = (await betterncm.app.getDataPath()).replace("/", "\\");
         
@@ -496,7 +675,7 @@ class BackendManager {
             pluginPath = plugin.pluginPath;
         }
         
-        // Normalize path
+        // 规范化路径
         pluginPath = pluginPath.replace("/./", "\\").replace("/", "\\");
 
         console.log(`Taskbar Lyrics: Starting backend. DataPath: ${dataPath}, PluginPath: ${pluginPath}`);
@@ -508,8 +687,7 @@ class BackendManager {
 
         try {
             await betterncm.app.exec(`cmd /S /C ${cmd}`, false, false);
-            // Give it a moment to start before sending configs? 
-            // The original code sends immediately. The socket connection logic handles the queue.
+            // 启动后应用配置
             this.applyConfig();
             lyricManager.start();
         } catch (e) {
@@ -518,6 +696,10 @@ class BackendManager {
         }
     }
 
+    /**
+     * 应用所有配置
+     * @description 将当前所有配置发送给后端程序
+     */
     applyConfig() {
         apiInstance.font(ConfigManager.get("font"));
         apiInstance.color(ConfigManager.get("color"));
@@ -529,11 +711,20 @@ class BackendManager {
         apiInstance.windowScreen(ConfigManager.get("screen"));
     }
 
+    /**
+     * 关闭后端程序
+     * @description 发送关闭指令并停止歌词处理
+     */
     async close() {
         apiInstance.close({});
         lyricManager.stop();
     }
 
+    /**
+     * 重启后端程序
+     * @description 尝试重新启动后端程序
+     * @returns {boolean} 重启是否成功
+     */
     async restart() {
         console.log("Taskbar Lyrics: Triggering backend restart...");
         try {
@@ -550,6 +741,12 @@ class BackendManager {
 const backendManager = new BackendManager();
 
 
+/**
+ * @module 视图管理
+ * @description 负责插件配置界面的渲染、事件绑定和设置更新
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 class ConfigView {
     constructor() {
@@ -560,16 +757,28 @@ class ConfigView {
         this.pluginPath = "";
     }
 
+    /**
+     * 设置插件路径
+     * @param {string} path - 插件根目录路径
+     */
     setPluginPath(path) {
         this.pluginPath = path;
     }
 
+    /**
+     * 获取根元素
+     * @returns {HTMLElement} 插件配置界面的根元素
+     */
     getElement() {
         return this.root;
     }
 
+    /**
+     * 初始化视图
+     * @description 加载 HTML 和 CSS，初始化 Tab 切换和全局事件，绑定设置项
+     */
     async init() {
-        // Load HTML
+        // 加载 HTML 模板
         const path = `${this.pluginPath}/assets/config.html`;
         const text = await betterncm.fs.readFileText(path);
         const parser = new DOMParser();
@@ -577,7 +786,7 @@ class ConfigView {
         const element = dom.querySelector("#taskbar-lyrics-dom");
         this.root.appendChild(element);
 
-        // Load CSS
+        // 加载 CSS 样式
         const cssPath = `${this.pluginPath}/assets/style.css`;
 
         const cssText = await betterncm.fs.readFileText(cssPath);
@@ -590,6 +799,10 @@ class ConfigView {
         this.bindSettings();
     }
 
+    /**
+     * 初始化 Tab 切换逻辑
+     * @description 绑定 Tab 按钮点击事件，切换显示内容
+     */
     initTabs() {
         const tabBox = this.root.querySelector(".tab_box");
         const contentBox = this.root.querySelector(".content_box");
@@ -606,6 +819,10 @@ class ConfigView {
         });
     }
 
+    /**
+     * 初始化全局事件
+     * @description 处理全局性的交互事件
+     */
     initGlobalEvents() {
         const selectController = (event) => {
             const parent = event.target.parentElement;
@@ -620,6 +837,10 @@ class ConfigView {
         // But init() is async. The caller (index.js) will await it.
     }
 
+    /**
+     * 绑定设置项
+     * @description 为各个设置项绑定事件监听，处理配置的读取、修改和重置
+     */
     bindSettings() {
         // Helper to select within root
         const $ = (sel) => this.root.querySelector(sel);
@@ -969,18 +1190,24 @@ class ConfigView {
 const configView = new ConfigView();
 
 
+/**
+ * @module 插件入口
+ * @description 插件的入口文件，负责初始化各个模块，处理生命周期事件，集成后端管理和视图逻辑
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
 
 plugin.onConfig(tools => configView.getElement());
 
 plugin.onLoad(async () => {
-    // Initialize Backend Manager with plugin path
+    // 初始化后端管理器
     backendManager.setPluginPath(plugin.pluginPath);
     
-    // Initialize View
+    // 初始化视图
     configView.setPluginPath(plugin.pluginPath);
     await configView.init();
 
-    // Setup Restart Logic
+    // 设置重启逻辑
     apiInstance.on('onClose', async (retryCount) => {
         if (retryCount === 5) {
              if (typeof channel !== 'undefined' && channel.call) {
@@ -1015,12 +1242,12 @@ plugin.onLoad(async () => {
         }
     });
 
-    // Close on unload
+    // 插件卸载时关闭后端
     addEventListener("beforeunload", async () => {
         await backendManager.close();
     });
 
-    // Start Backend
+    // 启动后端
     await backendManager.start();
 });
 

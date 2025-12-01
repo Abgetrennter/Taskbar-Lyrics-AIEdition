@@ -1,5 +1,12 @@
 "use strict";
 
+/**
+ * @module 视图管理
+ * @description 负责插件配置界面的渲染、事件绑定和设置更新
+ * @author Taskbar Lyrics Plugin Developer
+ * @date 2025-12-01
+ */
+
 class ConfigView {
     constructor() {
         this.root = document.createElement("div");
@@ -9,16 +16,28 @@ class ConfigView {
         this.pluginPath = "";
     }
 
+    /**
+     * 设置插件路径
+     * @param {string} path - 插件根目录路径
+     */
     setPluginPath(path) {
         this.pluginPath = path;
     }
 
+    /**
+     * 获取根元素
+     * @returns {HTMLElement} 插件配置界面的根元素
+     */
     getElement() {
         return this.root;
     }
 
+    /**
+     * 初始化视图
+     * @description 加载 HTML 和 CSS，初始化 Tab 切换和全局事件，绑定设置项
+     */
     async init() {
-        // Load HTML
+        // 加载 HTML 模板
         const path = `${this.pluginPath}/assets/config.html`;
         const text = await betterncm.fs.readFileText(path);
         const parser = new DOMParser();
@@ -26,7 +45,7 @@ class ConfigView {
         const element = dom.querySelector("#taskbar-lyrics-dom");
         this.root.appendChild(element);
 
-        // Load CSS
+        // 加载 CSS 样式
         const cssPath = `${this.pluginPath}/assets/style.css`;
 
         const cssText = await betterncm.fs.readFileText(cssPath);
@@ -39,6 +58,10 @@ class ConfigView {
         this.bindSettings();
     }
 
+    /**
+     * 初始化 Tab 切换逻辑
+     * @description 绑定 Tab 按钮点击事件，切换显示内容
+     */
     initTabs() {
         const tabBox = this.root.querySelector(".tab_box");
         const contentBox = this.root.querySelector(".content_box");
@@ -55,6 +78,10 @@ class ConfigView {
         });
     }
 
+    /**
+     * 初始化全局事件
+     * @description 处理全局性的交互事件
+     */
     initGlobalEvents() {
         const selectController = (event) => {
             const parent = event.target.parentElement;
@@ -69,6 +96,10 @@ class ConfigView {
         // But init() is async. The caller (index.js) will await it.
     }
 
+    /**
+     * 绑定设置项
+     * @description 为各个设置项绑定事件监听，处理配置的读取、修改和重置
+     */
     bindSettings() {
         // Helper to select within root
         const $ = (sel) => this.root.querySelector(sel);
