@@ -282,22 +282,37 @@ class LyricManager {
             if (extraShowValue == 1) { // Next Line or Swap
                 const nextLinePos = ConfigManager.get("effect")["next_line_lyrics_position"]["value"];
                 if (nextLinePos == 0) { // Extra = Next
-                    extraProgress = 0;
+                    extraProgress = -1;
                 } else if (nextLinePos == 1) { // Basic = Next, Extra = Current
                     extraProgress = basicProgress;
-                    basicProgress = 0;
+                    basicProgress = -1;
                 } else if (nextLinePos == 2) { // Rotate
                     if (this.currentLine == 1) {
                         // Basic=Curr, Extra=Next
-                        extraProgress = 0;
+                        extraProgress = -1;
                     } else {
                         // Basic=Next, Extra=Curr
                         extraProgress = basicProgress;
-                        basicProgress = 0;
+                        basicProgress = -1;
                     }
                 }
             } else if (extraShowValue == 0) {
                 extraProgress = -1;
+            } else {
+                // For Case 2 (Translation) & 3 (Romaji)
+                // If extra lyric is effectively "Next Line", disable karaoke for it (-1)
+                // If extra lyric is Translation/Romaji of current line, keep karaoke (basicProgress)
+                
+                const extraText = this.currentLyricsText.extra;
+                const isTranslation = currentLyric?.translatedLyric && extraText === currentLyric.translatedLyric;
+                const isRomaji = currentLyric?.romanLyric && extraText === currentLyric.romanLyric;
+                
+                if (isTranslation || isRomaji) {
+                    extraProgress = basicProgress;
+                } else {
+                    // Likely fallback to next line or empty
+                    extraProgress = -1;
+                }
             }
 
             apiInstance.lyrics({
