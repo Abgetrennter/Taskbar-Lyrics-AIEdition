@@ -336,13 +336,53 @@ void LyricsRenderer::drawLyrics(HDC& hdc, RECT& rect)
              top = (float)rect.top + dpi(5);
         }
         
-        m_d2dSolidBrush->SetColor(isLightMode ? basicLightColor : basicDarkColor);
-        m_d2dRenderTarget->DrawTextLayout(
-            D2D1::Point2F(left, top),
-            m_dwriteBasicTextLayout,
-            m_d2dSolidBrush,
-            D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
-        );
+        D2D1::ColorF originalColor = isLightMode ? basicLightColor : basicDarkColor;
+        D2D1_POINT_2F origin = D2D1::Point2F(left, top);
+
+        if (basicLyricProgress >= 0.0f && basicLyricProgress <= 1.0f) {
+            DWRITE_TEXT_METRICS metrics;
+            m_dwriteBasicTextLayout->GetMetrics(&metrics);
+
+            float textStart = left + metrics.left;
+            float textWidth = metrics.widthIncludingTrailingWhitespace;
+            float splitX = textStart + textWidth * basicLyricProgress;
+
+            // Draw Unread (Dimmed)
+            D2D1::ColorF unreadColor = originalColor;
+            unreadColor.a *= 0.3f; 
+            m_d2dSolidBrush->SetColor(unreadColor);
+
+            D2D1_RECT_F clipRectUnread = D2D1::RectF(splitX, (float)rect.top, (float)rect.right, (float)rect.bottom);
+            m_d2dRenderTarget->PushAxisAlignedClip(clipRectUnread, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            m_d2dRenderTarget->DrawTextLayout(
+                origin,
+                m_dwriteBasicTextLayout,
+                m_d2dSolidBrush,
+                D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+            );
+            m_d2dRenderTarget->PopAxisAlignedClip();
+
+            // Draw Read (Original)
+            m_d2dSolidBrush->SetColor(originalColor);
+            D2D1_RECT_F clipRectRead = D2D1::RectF((float)rect.left, (float)rect.top, splitX, (float)rect.bottom);
+            m_d2dRenderTarget->PushAxisAlignedClip(clipRectRead, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            m_d2dRenderTarget->DrawTextLayout(
+                origin,
+                m_dwriteBasicTextLayout,
+                m_d2dSolidBrush,
+                D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+            );
+            m_d2dRenderTarget->PopAxisAlignedClip();
+
+        } else {
+            m_d2dSolidBrush->SetColor(originalColor);
+            m_d2dRenderTarget->DrawTextLayout(
+                origin,
+                m_dwriteBasicTextLayout,
+                m_d2dSolidBrush,
+                D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+            );
+        }
     }
 
     // Draw Extra
@@ -350,13 +390,52 @@ void LyricsRenderer::drawLyrics(HDC& hdc, RECT& rect)
         float left = (float)rect.left + dpi(5);
         float top = (float)rect.bottom / 2.0f;
 
-        m_d2dSolidBrush->SetColor(isLightMode ? extraLightColor : extraDarkColor);
-        m_d2dRenderTarget->DrawTextLayout(
-            D2D1::Point2F(left, top),
-            m_dwriteExtraTextLayout,
-            m_d2dSolidBrush,
-            D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
-        );
+        D2D1::ColorF originalColor = isLightMode ? extraLightColor : extraDarkColor;
+        D2D1_POINT_2F origin = D2D1::Point2F(left, top);
+
+        if (extraLyricProgress >= 0.0f && extraLyricProgress <= 1.0f) {
+            DWRITE_TEXT_METRICS metrics;
+            m_dwriteExtraTextLayout->GetMetrics(&metrics);
+
+            float textStart = left + metrics.left;
+            float textWidth = metrics.widthIncludingTrailingWhitespace;
+            float splitX = textStart + textWidth * extraLyricProgress;
+
+            // Draw Unread (Dimmed)
+            D2D1::ColorF unreadColor = originalColor;
+            unreadColor.a *= 0.3f;
+            m_d2dSolidBrush->SetColor(unreadColor);
+
+            D2D1_RECT_F clipRectUnread = D2D1::RectF(splitX, (float)rect.top, (float)rect.right, (float)rect.bottom);
+            m_d2dRenderTarget->PushAxisAlignedClip(clipRectUnread, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            m_d2dRenderTarget->DrawTextLayout(
+                origin,
+                m_dwriteExtraTextLayout,
+                m_d2dSolidBrush,
+                D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+            );
+            m_d2dRenderTarget->PopAxisAlignedClip();
+
+            // Draw Read (Original)
+            m_d2dSolidBrush->SetColor(originalColor);
+            D2D1_RECT_F clipRectRead = D2D1::RectF((float)rect.left, (float)rect.top, splitX, (float)rect.bottom);
+            m_d2dRenderTarget->PushAxisAlignedClip(clipRectRead, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+            m_d2dRenderTarget->DrawTextLayout(
+                origin,
+                m_dwriteExtraTextLayout,
+                m_d2dSolidBrush,
+                D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+            );
+            m_d2dRenderTarget->PopAxisAlignedClip();
+        } else {
+            m_d2dSolidBrush->SetColor(originalColor);
+            m_d2dRenderTarget->DrawTextLayout(
+                origin,
+                m_dwriteExtraTextLayout,
+                m_d2dSolidBrush,
+                D2D1_DRAW_TEXT_OPTIONS_NO_SNAP
+            );
+        }
     }
 
     m_d2dRenderTarget->EndDraw();

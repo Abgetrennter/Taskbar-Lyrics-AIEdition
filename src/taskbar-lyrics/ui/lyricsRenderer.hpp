@@ -50,6 +50,9 @@ public:
     float basicFontSizeDoubleLine = 15.0f;
     float extraFontSize = 15.0f;
 
+    float basicLyricProgress = -1.0f;
+    float extraLyricProgress = -1.0f;
+
     WindowAlignment windowAlignment = WindowAlignment::Adaptive;
 
     int leftMargin = 0;

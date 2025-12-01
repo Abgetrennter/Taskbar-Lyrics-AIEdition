@@ -61,7 +61,8 @@ const defaultConfig = {
         "retrieval_method": {
             "value": 1,
             "textContent": "使用LibLyric解析获取歌词",
-        }
+        },
+        "karaoke": false
     },
     "effect": {
         "next_line_lyrics_position": {

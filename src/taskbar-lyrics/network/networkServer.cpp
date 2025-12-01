@@ -412,6 +412,19 @@ void NetworkServer::handleSize(const std::string& body) {
 void NetworkServer::handleLyrics(const std::string& body) {
     m_window->renderer->basicLyrics = utf8ToWide(JsonUtils::getString(body, "basic"));
     m_window->renderer->extraLyrics = utf8ToWide(JsonUtils::getString(body, "extra"));
+
+    if (body.find("\"basic_progress\":") != std::string::npos) {
+        m_window->renderer->basicLyricProgress = JsonUtils::getFloat(body, "basic_progress");
+    } else {
+        m_window->renderer->basicLyricProgress = -1.0f;
+    }
+
+    if (body.find("\"extra_progress\":") != std::string::npos) {
+        m_window->renderer->extraLyricProgress = JsonUtils::getFloat(body, "extra_progress");
+    } else {
+        m_window->renderer->extraLyricProgress = -1.0f;
+    }
+
     PostMessage(m_window->windowHandle, WM_PAINT, NULL, NULL);
 }
 

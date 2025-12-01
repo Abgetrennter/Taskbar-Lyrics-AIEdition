@@ -290,6 +290,7 @@ class ConfigView {
         const lyricsSettings = {
             reset: () => {
                 $(".retrieval-method .value").textContent = defaultConfig.lyrics.retrieval_method.textContent;
+                $(".karaoke-switch").checked = defaultConfig.lyrics.karaoke;
                 lyricManager.stop();
                 ConfigManager.set("lyrics", undefined);
                 lyricManager.start();
@@ -298,6 +299,13 @@ class ConfigView {
         $(".content.lyrics .lyrics-settings .reset").addEventListener("click", lyricsSettings.reset);
         $(".lyrics-switch").addEventListener("change", e => e.target.checked ? backendManager.start() : backendManager.close());
         
+        $(".karaoke-switch").addEventListener("change", (e) => {
+             const config = ConfigManager.get("lyrics");
+             config["karaoke"] = e.target.checked;
+             ConfigManager.set("lyrics", config);
+        });
+        $(".karaoke-switch").checked = ConfigManager.get("lyrics")["karaoke"];
+
         $(".retrieval-method .select").addEventListener("click", e => {
             const value = e.target.dataset.value;
             const text = e.target.textContent;

@@ -68,6 +68,7 @@ class LyricManager {
             "basic": name,
             "extra": artistName
         });
+        this.currentLyricsText = { "basic": name, "extra": artistName };
 
         const config = ConfigManager.get("lyrics");
         if ((config["retrieval_method"]["value"] == "2") && window.currentLyrics) {
@@ -88,7 +89,8 @@ class LyricManager {
             this.parsedLyric = this.liblyric.parseLyric(
                 lyricData?.lrc?.lyric ?? "",
                 lyricData?.tlyric?.lyric ?? "",
-                lyricData?.romalrc?.lyric ?? ""
+                lyricData?.romalrc?.lyric ?? "",
+                lyricData?.yrc?.lyric ?? ""
             );
         }
 
@@ -118,10 +120,14 @@ class LyricManager {
         const adjust = Number(ConfigManager.get("effect")["adjust"]);
         if (!this.parsedLyric) return;
 
-        let nextIndex = this.parsedLyric.findIndex(item => item.time > (time + adjust) * 1000);
+        const currentTime = (time + adjust) * 1000;
+        let nextIndex = this.parsedLyric.findIndex(item => item.time > currentTime);
         nextIndex = (nextIndex <= -1) ? this.parsedLyric.length : nextIndex;
 
-        if (nextIndex != this.currentIndex) {
+        const config = ConfigManager.get("lyrics");
+        const isLineChanged = nextIndex != this.currentIndex;
+
+        if (isLineChanged) {
             const currentLyric = this.parsedLyric[nextIndex - 1] ?? "";
             const nextLyric = this.parsedLyric[nextIndex] ?? "";
 
@@ -131,9 +137,72 @@ class LyricManager {
             };
 
             this.processExtraShow(lyrics, currentLyric, nextLyric);
-
-            apiInstance.lyrics(lyrics);
+            this.currentLyricsText = lyrics;
             this.currentIndex = nextIndex;
+        }
+
+        if (config.karaoke) {
+            if (!this.currentLyricsText) return;
+
+            const currentLineIdx = this.currentIndex - 1;
+            const currentLyric = this.parsedLyric[currentLineIdx];
+            
+            let basicProgress = 0;
+            if (currentLyric) {
+                const startTime = currentLyric.time;
+                let duration = currentLyric.duration;
+                
+                // Fallback duration calculation if missing or 0
+                if (!duration || duration <= 0) {
+                     const nextLine = this.parsedLyric[currentLineIdx + 1];
+                     if (nextLine) {
+                         duration = nextLine.time - startTime;
+                     }
+                }
+
+                if (duration > 0) {
+                    const p = (currentTime - startTime) / duration;
+                    basicProgress = Math.max(0, Math.min(1, p));
+                } else {
+                    basicProgress = (currentTime >= startTime) ? 1 : 0;
+                }
+            }
+
+            let extraProgress = basicProgress;
+            const extraShowValue = ConfigManager.get("effect")["extra_show"]["value"];
+            
+            if (extraShowValue == 1) { // Next Line or Swap
+                const nextLinePos = ConfigManager.get("effect")["next_line_lyrics_position"]["value"];
+                if (nextLinePos == 0) { // Extra = Next
+                    extraProgress = 0;
+                } else if (nextLinePos == 1) { // Basic = Next, Extra = Current
+                    extraProgress = basicProgress;
+                    basicProgress = 0;
+                } else if (nextLinePos == 2) { // Rotate
+                    if (this.currentLine == 1) {
+                        // Basic=Curr, Extra=Next
+                        extraProgress = 0;
+                    } else {
+                        // Basic=Next, Extra=Curr
+                        extraProgress = basicProgress;
+                        basicProgress = 0;
+                    }
+                }
+            } else if (extraShowValue == 0) {
+                extraProgress = -1;
+            }
+
+            apiInstance.lyrics({
+                ...this.currentLyricsText,
+                basic_progress: basicProgress,
+                extra_progress: extraProgress
+            });
+        } else if (isLineChanged) {
+            apiInstance.lyrics({
+                ...this.currentLyricsText,
+                basic_progress: -1,
+                extra_progress: -1
+            });
         }
     }
 
