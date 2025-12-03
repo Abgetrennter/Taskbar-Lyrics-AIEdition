@@ -59,7 +59,7 @@ void LyricsWindow::createWindow(HINSTANCE instanceHandle, int showCmd)
 {
     HWND taskbarHandle = FindWindow(L"Shell_TrayWnd", NULL);
     this->windowHandle = CreateWindowEx(
-        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+        WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
         this->m_windowClassName.c_str(),
         this->m_windowName.c_str(),
         WS_POPUP,
@@ -214,6 +214,34 @@ LRESULT CALLBACK LyricsWindow::wndProc(HWND hwnd, UINT message, WPARAM wParam, L
 {
     switch (message)
     {
+        case WM_NCHITTEST:
+        {
+            if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) {
+                return HTCLIENT;
+            }
+            return HTTRANSPARENT;
+        }
+        break;
+
+        case WM_RBUTTONUP:
+        {
+            POINT pt;
+            GetCursorPos(&pt);
+
+            HMENU hMenu = CreatePopupMenu();
+            AppendMenu(hMenu, MF_STRING, 1, L"关闭歌词");
+
+            SetForegroundWindow(hwnd);
+            int selection = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, 0, hwnd, NULL);
+            DestroyMenu(hMenu);
+
+            if (selection == 1) {
+                DestroyWindow(hwnd);
+            }
+            return 0;
+        }
+        break;
+
         case WM_PAINT:
         {
             if (LyricsWindow::instance && LyricsWindow::instance->renderer) {

@@ -18,6 +18,7 @@ class LyricManager {
         
         this.boundPlayLoad = this.playLoad.bind(this);
         this.boundPlayProgress = this.playProgress.bind(this);
+        this.boundOnLyricsUpdate = this.onLyricsUpdate.bind(this);
     }
 
     /**
@@ -71,17 +72,12 @@ class LyricManager {
         this.currentLyricsText = { "basic": name, "extra": artistName };
 
         const config = ConfigManager.get("lyrics");
-        if ((config["retrieval_method"]["value"] == "2") && window.currentLyrics) {
+        if (config["retrieval_method"]["value"] == "2") {
             // 集成 RefinedNowPlaying 插件
-            let retries = 0;
-            while (retries < 50) { // 防止无限循环
-                if (window.currentLyrics.hash.includes(this.musicId)) {
-                    this.parsedLyric = window.currentLyrics.lyrics;
-                    break;
-                } else {
-                    await Utils.delay(100);
-                    retries++;
-                }
+            if (window.currentLyrics && window.currentLyrics.hash.includes(this.musicId)) {
+                this.parsedLyric = window.currentLyrics.lyrics;
+            } else {
+                this.parsedLyric = null;
             }
         } else {
             // 使用 LibLyric 获取歌词
@@ -107,6 +103,20 @@ class LyricManager {
             }
         }
 
+        this.processParsedLyric();
+        this.currentIndex = 0;
+    }
+
+    onLyricsUpdate(e) {
+        const lyrics = e.detail;
+        if (lyrics && lyrics.hash && lyrics.hash.includes(this.musicId)) {
+            this.parsedLyric = lyrics.lyrics;
+            this.processParsedLyric();
+            this.currentIndex = 0;
+        }
+    }
+
+    processParsedLyric() {
         if (this.parsedLyric) {
             this.parsedLyric = this.parsedLyric.filter(item => item.originalLyric != "");
 
@@ -119,8 +129,6 @@ class LyricManager {
                 this.parsedLyric = [];
             }
         }
-
-        this.currentIndex = 0;
     }
 
     parseYrc(lyric) {
@@ -404,6 +412,7 @@ class LyricManager {
             case 2: // RefinedNowPlaying
                 legacyNativeCmder.appendRegisterCall("Load", "audioplayer", this.boundPlayLoad);
                 legacyNativeCmder.appendRegisterCall("PlayProgress", "audioplayer", this.boundPlayProgress);
+                document.addEventListener('lyrics-updated', this.boundOnLyricsUpdate);
                 break;
         }
     }
@@ -427,6 +436,9 @@ class LyricManager {
             case 2:
                 legacyNativeCmder.removeRegisterCall("Load", "audioplayer", this.boundPlayLoad);
                 legacyNativeCmder.removeRegisterCall("PlayProgress", "audioplayer", this.boundPlayProgress);
+                if (method == 2) {
+                    document.removeEventListener('lyrics-updated', this.boundOnLyricsUpdate);
+                }
                 break;
         }
     }

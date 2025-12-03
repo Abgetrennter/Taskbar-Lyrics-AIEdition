@@ -50,18 +50,6 @@ void NetworkServer::heartbeatFunc()
 {
     while (m_isRunning) {
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        long long now = GetCurrentTimestamp();
-        
-        static bool initialized = false;
-        if (!initialized) {
-             if (now - m_lastHeartbeatTime > 30000) initialized = true;
-             else continue;
-        }
-
-        if (now - m_lastHeartbeatTime > 10000) {
-            SendMessage(m_window->windowHandle, WM_CLOSE, NULL, NULL);
-            break;
-        }
     }
 }
 
