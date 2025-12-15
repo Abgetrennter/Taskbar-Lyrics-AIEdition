@@ -288,7 +288,7 @@ class TaskbarLyricsAPI {
             return;
         }
 
-        const payload = Utils.flattenObject(params);
+        const payload = params;
         // HTTP 模式下，URL 通过请求行传递，body 中不需要 url 字段，但保留也不会出错
         
         try {
