@@ -22,34 +22,20 @@ class BackendManager {
 
     /**
      * 启动后端程序
-     * @description 复制并运行后端可执行文件
+     * @description (已废弃) 后端现独立运行，不再由插件自动启动
      */
     async start() {
-        const dataPath = (await betterncm.app.getDataPath()).replace("/", "\\");
+        console.log("Taskbar Lyrics: Backend start logic removed. Expecting independent backend.");
         
-        let pluginPath = this.pluginPath;
-        if (!pluginPath) {
-            pluginPath = plugin.pluginPath;
-        }
-        
-        // 规范化路径
-        pluginPath = pluginPath.replace("/./", "\\").replace("/", "\\");
-
-        console.log(`Taskbar Lyrics: Starting backend. DataPath: ${dataPath}, PluginPath: ${pluginPath}`);
-
-        const taskkill = `taskkill /F /IM "任务栏歌词.exe"`;
-        const xcopy = `xcopy /C /D /Y "${pluginPath}\\任务栏歌词.exe" "${dataPath}"`;
-        const exec = `"${dataPath}\\任务栏歌词.exe" ${BETTERNCM_API_PORT - 2}`;
-        const cmd = `${taskkill} & ${xcopy} & ${exec}`;
-
-        try {
-            await betterncm.app.exec(`cmd /S /C ${cmd}`, false, false);
-            // 启动后应用配置
+        // 监听后端上线事件，一旦连接成功立即同步配置
+        apiInstance.on('onOnline', () => {
+            console.log("Taskbar Lyrics: Backend online, applying config...");
             this.applyConfig();
-            lyricManager.start();
-        } catch (e) {
-            console.error("Taskbar Lyrics: Failed to start backend", e);
-            throw e;
+        });
+
+        // 如果当前已经在线（极少情况，因为 start 在初始化时调用），直接应用
+        if (apiInstance.isBackendOnline) {
+            this.applyConfig();
         }
     }
 
@@ -70,28 +56,20 @@ class BackendManager {
 
     /**
      * 关闭后端程序
-     * @description 发送关闭指令并停止歌词处理
+     * @description 发送关闭指令
      */
     async close() {
         apiInstance.close({});
-        lyricManager.stop();
     }
 
     /**
      * 重启后端程序
-     * @description 尝试重新启动后端程序
-     * @returns {boolean} 重启是否成功
+     * @description (已废弃)
+     * @returns {boolean} 总是返回 false
      */
     async restart() {
-        console.log("Taskbar Lyrics: Triggering backend restart...");
-        try {
-            await this.start();
-            console.log("Taskbar Lyrics: Backend restart command executed.");
-            return true;
-        } catch (e) {
-            console.error("Taskbar Lyrics: Backend restart failed", e);
-            return false;
-        }
+        console.log("Taskbar Lyrics: Backend restart logic removed.");
+        return false;
     }
 }
 

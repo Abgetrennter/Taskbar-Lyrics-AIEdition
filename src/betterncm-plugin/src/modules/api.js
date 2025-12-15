@@ -2,103 +2,90 @@
 
 /**
  * @module API 通信模块
- * @description 封装与任务栏歌词程序的 WebSocket 通信逻辑，包括自动重连、心跳保活和消息队列
+ * @description 封装与任务栏歌词程序的 HTTP 通信逻辑
  * @author Taskbar Lyrics Plugin Developer
- * @date 2025-12-01
+ * @date 2025-12-15
  */
 
 class TaskbarLyricsAPI {
     constructor() {
-        this.socket = null;
-        this.heartbeatInterval = null;
-        this.reconnectTimeout = null;
-        this.retryCount = 0;
-        this.messageQueue = [];
-        this.port = BETTERNCM_API_PORT - 2;
+        // 使用固定端口，实现独立部署
+        this.port = 27232; 
         this.callbacks = {
-            onOpen: [],
-            onClose: [],
-            onError: []
+            onError: [],
+            onOnline: [],
+            onOffline: []
         };
+        this.isBackendOnline = false;
+        this.checkInterval = null;
+        this.startHealthCheck();
     }
 
-    /**
-     * 建立 WebSocket 连接
-     * @description 初始化 WebSocket 连接，设置事件监听，处理断线重连
-     */
-    connect() {
-        if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
-            return;
-        }
-
-        this.socket = new WebSocket(`ws://127.0.0.1:${this.port}`);
-
-        this.socket.onopen = () => {
-            console.log("Taskbar Lyrics: WebSocket connected");
-            this.retryCount = 0;
-            if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
-
-            // 发送队列中的消息
-            while (this.messageQueue.length > 0) {
-                const msg = this.messageQueue.shift();
-                this.socket.send(msg);
-            }
-
-            // 启动心跳检测
-            if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = setInterval(() => {
-                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                    this.socket.send(JSON.stringify({ url: "/taskbar/heartbeat" }));
+    startHealthCheck() {
+        const check = async () => {
+            try {
+                // 使用 OPTIONS 请求作为轻量级心跳/健康检查
+                const response = await fetch(`http://127.0.0.1:${this.port}/taskbar/lyrics/lyrics`, {
+                    method: 'OPTIONS'
+                });
+                if (response.ok) {
+                    if (!this.isBackendOnline) {
+                        console.log("Taskbar Lyrics: Backend is online");
+                        this.callbacks.onOnline.forEach(cb => cb());
+                    }
+                    this.isBackendOnline = true;
+                } else {
+                    if (this.isBackendOnline) {
+                        console.log("Taskbar Lyrics: Backend is offline (Response not OK)");
+                        this.callbacks.onOffline.forEach(cb => cb());
+                    }
+                    this.isBackendOnline = false;
                 }
-            }, 5000);
-            
-            this.callbacks.onOpen.forEach(cb => cb());
+            } catch (e) {
+                // console.error("Taskbar Lyrics: Health check failed", e);
+                if (this.isBackendOnline) {
+                    console.log("Taskbar Lyrics: Backend is offline (Error)", e);
+                    this.callbacks.onOffline.forEach(cb => cb());
+                }
+                this.isBackendOnline = false;
+            }
         };
 
-        this.socket.onclose = () => {
-            console.log("Taskbar Lyrics: WebSocket closed, reconnecting in 3s...");
-            if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-
-            this.retryCount++;
-            
-            this.callbacks.onClose.forEach(cb => cb(this.retryCount));
-
-            // 3秒后尝试重连
-            this.reconnectTimeout = setTimeout(() => this.connect(), 3000);
-        };
-
-        this.socket.onerror = (err) => {
-            console.error("Taskbar Lyrics: WebSocket error", err);
-            this.socket.close();
-            this.callbacks.onError.forEach(cb => cb(err));
-        };
+        check(); // 立即检查一次
+        this.checkInterval = setInterval(check, 2000); // 每2秒检查一次
     }
 
     /**
      * 发送请求
-     * @description 发送数据到任务栏歌词程序，如果未连接则加入队列
+     * @description 发送数据到任务栏歌词程序
      * @param {string} path - API 路径
      * @param {Object} params - 请求参数
      */
-    fetch(path, params) {
+    async fetch(path, params) {
+        if (!this.isBackendOnline) {
+            // 如果后端离线，直接忽略请求，避免大量报错
+            return;
+        }
+
         const payload = Utils.flattenObject(params);
-        payload.url = "/taskbar" + path;
-        const msg = JSON.stringify(payload);
-
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(msg);
-        } else {
-            // 如果是歌词更新，移除旧的歌词更新消息，避免队列堆积
-            if (payload.url === "/taskbar/lyrics/lyrics") {
-                this.messageQueue = this.messageQueue.filter(m => !m.includes('"/taskbar/lyrics/lyrics"'));
+        // HTTP 模式下，URL 通过请求行传递，body 中不需要 url 字段，但保留也不会出错
+        
+        try {
+            const response = await fetch(`http://127.0.0.1:${this.port}/taskbar${path}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            this.messageQueue.push(msg);
-
-            // 限制队列长度
-            if (this.messageQueue.length > 100) this.messageQueue.shift();
-
-            this.connect();
+        } catch (e) {
+            // 如果请求失败，可能后端刚刚离线
+            this.isBackendOnline = false;
+            this.callbacks.onError.forEach(cb => cb(e));
         }
     }
 
@@ -167,7 +154,7 @@ class TaskbarLyricsAPI {
     /**
      * 监听事件
      * @description 注册事件回调
-     * @param {string} event - 事件名称 (onOpen, onClose, onError)
+     * @param {string} event - 事件名称 (onError)
      * @param {Function} callback - 回调函数
      */
     on(event, callback) {

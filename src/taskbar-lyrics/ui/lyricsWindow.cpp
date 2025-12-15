@@ -7,6 +7,7 @@ LyricsWindow* LyricsWindow::instance = nullptr;
 LyricsWindow::LyricsWindow(HINSTANCE instanceHandle, int showCmd)
 {
     LyricsWindow::instance = this;
+    m_isMonitoring = true;
     // Pass the address of the member variable windowHandle
     this->renderer = new LyricsRenderer(&this->windowHandle);
 
@@ -19,21 +20,36 @@ LyricsWindow::LyricsWindow(HINSTANCE instanceHandle, int showCmd)
 
 LyricsWindow::~LyricsWindow()
 {
-    if (this->renderer) {
-        delete this->renderer;
-        this->renderer = nullptr;
+    m_isMonitoring = false;
+
+    // Close registry key to break RegNotifyChangeKeyValue
+    if (this->m_registryKey) {
+        RegCloseKey(this->m_registryKey);
+        this->m_registryKey = nullptr;
     }
 
-    if (this->m_widthMonitorThread) {
-        this->m_widthMonitorThread->detach();
+    if (this->m_registryMonitorThread && this->m_registryMonitorThread->joinable()) {
+        this->m_registryMonitorThread->join();
+        delete this->m_registryMonitorThread;
+        this->m_registryMonitorThread = nullptr;
+    }
+
+    if (this->m_widthMonitorThread && this->m_widthMonitorThread->joinable()) {
+        this->m_widthMonitorThread->join();
         delete this->m_widthMonitorThread;
         this->m_widthMonitorThread = nullptr;
     }
 
-    if (this->m_registryMonitorThread) {
-        this->m_registryMonitorThread->detach();
-        delete this->m_registryMonitorThread;
-        this->m_registryMonitorThread = nullptr;
+    // Detach from Taskbar before destroying
+    if (this->windowHandle) {
+        SetParent(this->windowHandle, NULL);
+        DestroyWindow(this->windowHandle);
+        this->windowHandle = nullptr;
+    }
+
+    if (this->renderer) {
+        delete this->renderer;
+        this->renderer = nullptr;
     }
 }
 
@@ -81,9 +97,15 @@ void LyricsWindow::createWindow(HINSTANCE instanceHandle, int showCmd)
 void LyricsWindow::monitorRemainingWidth()
 {
     auto threadFunc = [this]() {
-        while (true)
+        while (m_isMonitoring)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            // Sleep in small chunks to allow faster exit
+            for (int i = 0; i < 10; ++i) {
+                if (!m_isMonitoring) return;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+
+            if (!m_isMonitoring) break;
 
             RECT taskbarRect;
             RECT startButtonRect;
@@ -184,7 +206,7 @@ void LyricsWindow::monitorRegistry()
 
     auto threadFunc = [this, getRegistryValues]() {
         // Continuous monitoring
-        while (true)
+        while (m_isMonitoring)
         {
             if (!this->m_registryKey)
             {
@@ -196,12 +218,13 @@ void LyricsWindow::monitorRegistry()
                 }
             }
 
-            if (RegNotifyChangeKeyValue(this->m_registryKey, true, REG_NOTIFY_CHANGE_LAST_SET, NULL, false))
-            {
-                 // Wait failed or handle invalid
-                 std::this_thread::sleep_for(std::chrono::seconds(1));
-                 continue;
+            // This will block until change or key closed
+            if (RegNotifyChangeKeyValue(this->m_registryKey, true, REG_NOTIFY_CHANGE_LAST_SET, NULL, false) != ERROR_SUCCESS) {
+                // Probably key closed or error, exit loop
+                break;
             }
+            
+            if (!m_isMonitoring) break;
 
             getRegistryValues();
         }

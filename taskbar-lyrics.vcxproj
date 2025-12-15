@@ -15,12 +15,20 @@
     <ClInclude Include="src\taskbar-lyrics\network\networkServer.hpp" />
     <ClInclude Include="src\taskbar-lyrics\ui\lyricsRenderer.hpp" />
     <ClInclude Include="src\taskbar-lyrics\ui\lyricsWindow.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\ui\trayIcon.hpp" />
     <ClInclude Include="src\taskbar-lyrics\utils\jsonUtils.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\utils\logger.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\utils\configManager.hpp" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\taskbar-lyrics\core\taskbarLyrics.cpp" />
     <ClCompile Include="src\taskbar-lyrics\network\networkServer.cpp" />
     <ClCompile Include="src\taskbar-lyrics\ui\lyricsRenderer.cpp" />
     <ClCompile Include="src\taskbar-lyrics\ui\lyricsWindow.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\ui\trayIcon.cpp" />
     <ClCompile Include="src\taskbar-lyrics\utils\jsonUtils.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\utils\logger.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\utils\configManager.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

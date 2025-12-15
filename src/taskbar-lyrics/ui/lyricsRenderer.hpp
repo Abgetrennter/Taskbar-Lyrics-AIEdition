@@ -67,6 +67,8 @@ public:
     HWND startButtonHandle = nullptr;
     HWND activeAreaHandle = nullptr;
 
+    void updateParentTaskbar(const std::string& taskbarName);
+
     RECT taskbarRect = {};
     RECT notificationAreaRect = {};
     RECT startButtonRect = {};

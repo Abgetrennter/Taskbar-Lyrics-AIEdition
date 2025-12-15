@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <string>
 #include <thread>
+#include <atomic>
 
 class LyricsWindow
 {
@@ -16,6 +17,7 @@ public:
     ~LyricsWindow();
 
 private:
+    std::atomic<bool> m_isMonitoring;
     std::thread* m_widthMonitorThread = nullptr;
     void monitorRemainingWidth();
 
