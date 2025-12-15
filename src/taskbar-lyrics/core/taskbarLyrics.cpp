@@ -3,6 +3,7 @@
 #include <shellapi.h> // for CommandLineToArgvW
 #include "../utils/logger.hpp"
 #include "../utils/configManager.hpp"
+#include "../ui/configWindow.hpp"
 
 #define IDM_START_SERVICE 1001
 #define IDM_STOP_SERVICE 1002
@@ -50,18 +51,7 @@ TaskbarLyrics::TaskbarLyrics(HINSTANCE instanceHandle, int showCmd)
     this->lyricsWindow = new LyricsWindow(instanceHandle, showCmd);
     
     // Apply Config
-    const AppConfig& config = ConfigManager::getInstance().GetConfig();
-    if (this->lyricsWindow->renderer) {
-        auto r = this->lyricsWindow->renderer;
-        r->fontFamily = utf8ToWide(config.font.fontFamily);
-        if (config.size.basic > 0) r->basicFontSize = config.size.basic;
-        if (config.size.extra > 0) r->extraFontSize = config.size.extra;
-        
-        r->basicLightColor = D2D1::ColorF(config.color.basic.light.hexColor, config.color.basic.light.opacity);
-        r->basicDarkColor = D2D1::ColorF(config.color.basic.dark.hexColor, config.color.basic.dark.opacity);
-        r->extraLightColor = D2D1::ColorF(config.color.extra.light.hexColor, config.color.extra.light.opacity);
-        r->extraDarkColor = D2D1::ColorF(config.color.extra.dark.hexColor, config.color.extra.dark.opacity);
-    }
+    ReloadConfig();
 
     this->networkServer = new NetworkServer(this->lyricsWindow, this->m_port);
 
@@ -151,6 +141,9 @@ LRESULT CALLBACK TaskbarLyrics::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
              if (s_instance) s_instance->onStatus();
         }
     }
+    else if (msg == WM_RELOAD_CONFIG) {
+        if (s_instance) s_instance->ReloadConfig();
+    }
     else if (msg == WM_COMMAND) {
         int id = LOWORD(wParam);
         if (s_instance) s_instance->handleTrayCommand(id);
@@ -189,8 +182,7 @@ void TaskbarLyrics::onStopService() {
 }
 
 void TaskbarLyrics::onConfig() {
-    std::wstring url = L"http://localhost:" + std::to_wstring(m_port) + L"/config";
-    ShellExecute(NULL, L"open", url.c_str(), NULL, NULL, SW_SHOW);
+    ConfigWindow::Show(m_hInstance);
 }
 
 void TaskbarLyrics::onStatus() {
@@ -212,6 +204,32 @@ void TaskbarLyrics::onOpenLogs() {
 
 void TaskbarLyrics::onExit() {
     PostQuitMessage(0);
+}
+
+void TaskbarLyrics::ReloadConfig() {
+    const AppConfig& config = ConfigManager::getInstance().GetConfig();
+    if (this->lyricsWindow && this->lyricsWindow->renderer) {
+        auto r = this->lyricsWindow->renderer;
+        r->fontFamily = utf8ToWide(config.font.fontFamily);
+        if (config.size.basic > 0) r->basicFontSize = config.size.basic;
+        if (config.size.extra > 0) r->extraFontSize = config.size.extra;
+        
+        r->basicLightColor = D2D1::ColorF(config.color.basic.light.hexColor, config.color.basic.light.opacity);
+        r->basicDarkColor = D2D1::ColorF(config.color.basic.dark.hexColor, config.color.basic.dark.opacity);
+        r->extraLightColor = D2D1::ColorF(config.color.extra.light.hexColor, config.color.extra.light.opacity);
+        r->extraDarkColor = D2D1::ColorF(config.color.extra.dark.hexColor, config.color.extra.dark.opacity);
+
+        r->basicFontWeight = (DWRITE_FONT_WEIGHT)config.style.basic.weightValue;
+        r->extraFontWeight = (DWRITE_FONT_WEIGHT)config.style.extra.weightValue;
+        r->basicFontStyle = (DWRITE_FONT_STYLE)config.style.basic.slope;
+        r->extraFontStyle = (DWRITE_FONT_STYLE)config.style.extra.slope;
+        r->basicUnderline = config.style.basic.underline;
+        r->extraUnderline = config.style.extra.underline;
+        r->basicStrikethrough = config.style.basic.strikethrough;
+        r->extraStrikethrough = config.style.extra.strikethrough;
+
+        r->updateParentTaskbar(config.screen.parentTaskbarValue);
+    }
 }
 
 int APIENTRY wWinMain(

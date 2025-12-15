@@ -7,6 +7,7 @@
 #include "../ui/trayIcon.hpp"
 
 #define WM_TRAYICON (WM_USER + 1)
+#define WM_RELOAD_CONFIG (WM_USER + 2)
 
 class TaskbarLyrics
 {
@@ -18,6 +19,7 @@ public:
     LyricsWindow* lyricsWindow = nullptr;
 
     void handleTrayCommand(int commandId);
+    void ReloadConfig(); // Added
 
 private:
     unsigned short m_port = 27232;
