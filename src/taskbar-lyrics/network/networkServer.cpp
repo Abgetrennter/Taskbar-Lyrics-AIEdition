@@ -196,6 +196,7 @@ void NetworkServer::handleConnection(SOCKET clientSocket)
                 else if (url == "/taskbar/window/margin") handleMargin(body);
                 else if (url == "/taskbar/window/screen") handleScreen(body);
                 else if (url == "/taskbar/close") handleClose(body);
+                else if (url == "/taskbar/hitokoto") handleHitokoto(body);
                 else if (url == "/config") { handleConfigPage(clientSocket); return; }
                 else if (url == "/style.css") { handleStyleCss(clientSocket); return; }
                 else if (url == "/api/config") {
@@ -375,6 +376,10 @@ void NetworkServer::handleLyrics(const std::string& body) {
         
         m_window->renderer->basicLyrics = utf8ToWide(basic);
         m_window->renderer->extraLyrics = utf8ToWide(extra);
+        
+        m_window->renderer->lastLyricsUpdateTimestamp = GetCurrentTimestamp();
+        m_window->renderer->isShowingHitokoto = false;
+
         PostMessage(m_window->windowHandle, WM_PAINT, NULL, NULL);
     } catch (...) {}
 }
@@ -455,6 +460,23 @@ void NetworkServer::handleClose(const std::string& body) {
     m_window->renderer->basicLyrics = L"";
     m_window->renderer->extraLyrics = L"";
     PostMessage(m_window->windowHandle, WM_PAINT, NULL, NULL);
+}
+
+void NetworkServer::handleHitokoto(const std::string& body) {
+    try {
+        json j = json::parse(body);
+        std::string jsonPath = j.value("hitokoto_json_path", "");
+        int interval = j.value("hitokoto_interval", 30);
+
+        auto& c = ConfigManager::getInstance().GetConfigMutable();
+        if (!jsonPath.empty()) {
+            c.hitokoto.jsonPath = jsonPath;
+        }
+        if (interval > 0) {
+            c.hitokoto.interval = interval;
+        }
+        ConfigManager::getInstance().Save();
+    } catch (...) {}
 }
 
 std::string readFile(const std::string& path) {
@@ -659,15 +681,22 @@ void NetworkServer::handleConfigPage(SOCKET clientSocket) {
                 // Screen
                 document.querySelector('.screen-select').dataset.value = data.screen.parent_taskbar.value;
                 document.querySelector('.screen-select .value').textContent = data.screen.parent_taskbar.textContent;
+                
+                // Hitokoto
+                if (data.hitokoto) {
+                    document.querySelector('.hitokoto-json-path').value = data.hitokoto.hitokoto_json_path || "";
+                    document.querySelector('.hitokoto-interval').value = data.hitokoto.hitokoto_interval || 30;
+                }
             }
         });
 
         // Save Config
-        document.querySelector('.save-btn').addEventListener('click', () => {
-            const config = {
-                font: {
-                    font_family: document.querySelector('.font-family').value
-                },
+        document.querySelectorAll('.apply').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const config = {
+                    font: {
+                        font_family: document.querySelector('.font-family').value
+                    },
                 color: {
                     basic: {
                         light: {
@@ -743,17 +772,32 @@ void NetworkServer::handleConfigPage(SOCKET clientSocket) {
             }).then(() => {
                 alert('保存成功');
             });
+
+            // Send Hitokoto Config
+            const hitokotoConfig = {
+                hitokoto_json_path: document.querySelector('.hitokoto-json-path').value,
+                hitokoto_interval: parseInt(document.querySelector('.hitokoto-interval').value)
+            };
+            
+            fetch('/taskbar/hitokoto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(hitokotoConfig)
+            });
         });
+    });
 
         // Reset Config
-        document.querySelector('.reset-btn').addEventListener('click', () => {
-             if(confirm('确定要恢复默认设置吗？')) {
-                 fetch('/api/reset', { method: 'POST' })
-                 .then(() => {
-                     alert('已重置，请刷新页面');
-                     location.reload();
-                 });
-             }
+        document.querySelectorAll('.reset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if(confirm('确定要恢复默认设置吗？')) {
+                    fetch('/api/reset', { method: 'POST' })
+                    .then(() => {
+                        alert('已重置，请刷新页面');
+                        location.reload();
+                    });
+                }
+            });
         });
     )";
     fullHtml += "</script></body></html>";

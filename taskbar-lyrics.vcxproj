@@ -17,6 +17,7 @@
     <ClInclude Include="src\taskbar-lyrics\ui\lyricsWindow.hpp" />
     <ClInclude Include="src\taskbar-lyrics\ui\trayIcon.hpp" />
     <ClInclude Include="src\taskbar-lyrics\utils\jsonUtils.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\utils\hitokotoManager.hpp" />
     <ClInclude Include="src\taskbar-lyrics\utils\logger.hpp" />
     <ClInclude Include="src\taskbar-lyrics\utils\configManager.hpp" />
   </ItemGroup>
@@ -26,6 +27,7 @@
     <ClCompile Include="src\taskbar-lyrics\ui\lyricsRenderer.cpp" />
     <ClCompile Include="src\taskbar-lyrics\ui\lyricsWindow.cpp" />
     <ClCompile Include="src\taskbar-lyrics\ui\trayIcon.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\utils\hitokotoManager.cpp" />
     <ClCompile Include="src\taskbar-lyrics\utils\jsonUtils.cpp" />
     <ClCompile Include="src\taskbar-lyrics\utils\logger.cpp" />
     <ClCompile Include="src\taskbar-lyrics\utils\configManager.cpp" />

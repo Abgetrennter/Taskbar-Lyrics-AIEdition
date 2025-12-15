@@ -1,6 +1,17 @@
 #include "lyricsWindow.hpp"
 #include <chrono>
 #include <cstring> // for std::memcmp
+#include "../utils/configManager.hpp"
+#include "../utils/hitokotoManager.hpp"
+
+// Helper
+static std::wstring utf8ToWide(const std::string& str) {
+    if (str.empty()) return L"";
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+}
 
 LyricsWindow* LyricsWindow::instance = nullptr;
 
@@ -91,6 +102,10 @@ void LyricsWindow::createWindow(HINSTANCE instanceHandle, int showCmd)
 
     SetParent(this->windowHandle, taskbarHandle);
     ShowWindow(this->windowHandle, showCmd);
+    
+    // Set timer for 30s check (every 1 second)
+    SetTimer(this->windowHandle, 1, 1000, NULL);
+
     PostMessage(this->windowHandle, WM_PAINT, NULL, NULL);
 }
 
@@ -269,6 +284,62 @@ LRESULT CALLBACK LyricsWindow::wndProc(HWND hwnd, UINT message, WPARAM wParam, L
         {
             if (LyricsWindow::instance && LyricsWindow::instance->renderer) {
                 LyricsWindow::instance->renderer->updateWindow();
+            }
+        }
+        break;
+
+        case WM_TIMER:
+        {
+            if (wParam == 1 && LyricsWindow::instance && LyricsWindow::instance->renderer) {
+                auto renderer = LyricsWindow::instance->renderer;
+                long long currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()
+                ).count();
+
+                auto& config = ConfigManager::getInstance().GetConfig();
+                int interval = config.hitokoto.interval * 1000; // Convert to ms
+                
+                bool shouldUpdate = false;
+                
+                if (!renderer->isShowingHitokoto) {
+                     // Check if music stopped for long enough
+                     if (currentTime - renderer->lastLyricsUpdateTimestamp > interval) {
+                         shouldUpdate = true;
+                     }
+                } else {
+                     // If already showing hitokoto, rotate based on interval too (optional, but good for variety)
+                     // Or maybe we want to keep one until music starts? 
+                     // Requirement says: "In the absence of lyrics (over 30s no new lyrics), extract one from json".
+                     // Implicitly, if still no lyrics, maybe we can refresh it periodically or just keep it.
+                     // Let's implement periodic refresh for hitokoto as well if user wants dynamic quotes.
+                     // We can use the same interval for refreshing quotes.
+                     
+                     // We need a timestamp for when hitokoto was shown. 
+                     // We can reuse lastLyricsUpdateTimestamp for hitokoto show time if we update it when showing hitokoto.
+                     if (currentTime - renderer->lastLyricsUpdateTimestamp > interval) {
+                         shouldUpdate = true;
+                     }
+                }
+
+                if (shouldUpdate) {
+                    std::string path = config.hitokoto.jsonPath;
+                    HitokotoManager::getInstance().Load(path);
+                    auto entry = HitokotoManager::getInstance().GetRandom();
+                    
+                    if (!entry.hitokoto.empty()) {
+                        renderer->basicLyrics = utf8ToWide(entry.hitokoto);
+                        std::string extra = entry.from;
+                        if (!entry.from_who.empty()) {
+                            if (!extra.empty()) extra += " ";
+                            extra += entry.from_who;
+                        }
+                        renderer->extraLyrics = utf8ToWide(extra);
+                        renderer->isShowingHitokoto = true;
+                        // Update timestamp so we don't refresh immediately again, and so we can refresh after interval
+                        renderer->lastLyricsUpdateTimestamp = currentTime; 
+                        renderer->updateWindow();
+                    }
+                }
             }
         }
         break;

@@ -26,6 +26,9 @@ public:
     bool hasComponentButton = false;
     bool isCentered = true;
 
+    long long lastLyricsUpdateTimestamp = 0;
+    bool isShowingHitokoto = false;
+
     std::wstring basicLyrics = L"Taskbar Lyrics Started";
     std::wstring extraLyrics = L"Waiting for lyrics...";
 

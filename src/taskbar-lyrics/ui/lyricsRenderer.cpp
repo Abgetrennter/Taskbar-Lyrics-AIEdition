@@ -1,6 +1,7 @@
 #include "lyricsRenderer.hpp"
 #include <algorithm> // for max
 #include <cstdio>
+#include <chrono>
 #include "../utils/logger.hpp"
 
 #pragma comment (lib, "d2d1.lib")
@@ -9,6 +10,10 @@
 LyricsRenderer::LyricsRenderer(HWND* windowHandle)
 {
     m_windowHandle = windowHandle;
+    
+    lastLyricsUpdateTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
 
     taskbarHandle = FindWindow(L"Shell_TrayWnd", NULL);
     notificationAreaHandle = FindWindowEx(taskbarHandle, NULL, L"TrayNotifyWnd", NULL);

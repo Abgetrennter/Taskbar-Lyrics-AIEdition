@@ -40,8 +40,9 @@ private:
     void handleMargin(const std::string& body);
     void handleScreen(const std::string& body);
     void handleClose(const std::string& body);
-    
-    // Config Page
+    void handleHitokoto(const std::string& body);
+
+    // Config Page Handlers
     void handleConfigPage(SOCKET clientSocket);
     void handleStyleCss(SOCKET clientSocket);
     void handleGetConfig(SOCKET clientSocket);

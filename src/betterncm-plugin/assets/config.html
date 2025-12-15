@@ -4,6 +4,7 @@
         <button class="tab_button active">字体</button>
         <button class="tab_button">歌词</button>
         <button class="tab_button">窗口</button>
+        <button class="tab_button">一言</button>
         <button class="tab_button">关于</button>
         <button class="tab_button">日志</button>
     </header>
@@ -330,6 +331,24 @@
                             </ul>
                         </div>
                     </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 一言 -->
+        <div class="content hitokoto">
+            <section class="hitokoto-settings">
+                <h1>
+                    <strong>一言设置：</strong>
+                    <button class="u-ibtn5 u-ibtnsz8 apply save-btn">立即应用</button>
+                </h1>
+                <div class="item_container">
+                    <span>JSON文件路径：</span>
+                    <input type="text" class="u-txt sc-flag hitokoto-json-path" style="width: 300px;">
+                </div>
+                <div class="item_container">
+                    <span>轮换间隔(秒)：</span>
+                    <input type="number" class="u-txt sc-flag number-input hitokoto-interval" step="1" min="5" value="30">
                 </div>
             </section>
         </div>

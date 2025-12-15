@@ -126,6 +126,18 @@ void from_json(const json& j, ScreenConfig& p) {
     }
 }
 
+// HitokotoConfig
+void to_json(json& j, const HitokotoConfig& p) {
+    j = json{
+        {"hitokoto_json_path", p.jsonPath},
+        {"hitokoto_interval", p.interval}
+    };
+}
+void from_json(const json& j, HitokotoConfig& p) {
+    if(j.contains("hitokoto_json_path")) j.at("hitokoto_json_path").get_to(p.jsonPath);
+    if(j.contains("hitokoto_interval")) j.at("hitokoto_interval").get_to(p.interval);
+}
+
 // AppConfig
 void to_json(json& j, const AppConfig& p) {
     j = json{
@@ -136,7 +148,8 @@ void to_json(json& j, const AppConfig& p) {
         {"position", p.position},
         {"margin", p.margin},
         {"align", p.align},
-        {"screen", p.screen}
+        {"screen", p.screen},
+        {"hitokoto", p.hitokoto}
     };
 }
 void from_json(const json& j, AppConfig& p) {
@@ -148,6 +161,7 @@ void from_json(const json& j, AppConfig& p) {
     if(j.contains("margin")) j.at("margin").get_to(p.margin);
     if(j.contains("align")) j.at("align").get_to(p.align);
     if(j.contains("screen")) j.at("screen").get_to(p.screen);
+    if(j.contains("hitokoto")) j.at("hitokoto").get_to(p.hitokoto);
 }
 
 // --- Implementation ---

@@ -61,6 +61,11 @@ struct ScreenConfig {
     std::string parentTaskbarText = "主屏幕";
 };
 
+struct HitokotoConfig {
+    std::string jsonPath = "e:\\Code\\Taskbar-Lyrics-1.x.x\\combined_lyrics.json";
+    int interval = 30; // seconds
+};
+
 struct AppConfig {
     FontConfig font;
     ColorConfig color;
@@ -70,6 +75,7 @@ struct AppConfig {
     MarginConfig margin;
     AlignConfig align;
     ScreenConfig screen;
+    HitokotoConfig hitokoto;
 };
 
 class ConfigManager {
