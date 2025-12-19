@@ -211,7 +211,10 @@ void TaskbarLyrics::ReloadConfig() {
     if (this->lyricsWindow && this->lyricsWindow->renderer) {
         auto r = this->lyricsWindow->renderer;
         r->fontFamily = utf8ToWide(config.font.fontFamily);
-        if (config.size.basic > 0) r->basicFontSize = config.size.basic;
+        if (config.size.basic > 0) {
+            r->basicFontSize = config.size.basic;
+            r->basicFontSizeDoubleLine = config.size.basic;
+        }
         if (config.size.extra > 0) r->extraFontSize = config.size.extra;
         
         r->basicLightColor = D2D1::ColorF(config.color.basic.light.hexColor, config.color.basic.light.opacity);

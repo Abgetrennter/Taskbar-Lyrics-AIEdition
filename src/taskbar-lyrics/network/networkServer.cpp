@@ -354,12 +354,12 @@ void NetworkServer::handleSize(const std::string& body) {
 
         if (basic > 0) {
             m_window->renderer->basicFontSize = basic;
+            m_window->renderer->basicFontSizeDoubleLine = basic;
             c.size.basic = basic;
         }
         
         if (extra > 0) {
             m_window->renderer->extraFontSize = extra;
-            m_window->renderer->basicFontSizeDoubleLine = extra;
             c.size.extra = extra;
         }
         ConfigManager::getInstance().Save();
@@ -842,7 +842,7 @@ void NetworkServer::handleUpdateConfig(SOCKET clientSocket, const std::string& b
         
         r->basicFontSize = config.size.basic;
         r->extraFontSize = config.size.extra;
-        r->basicFontSizeDoubleLine = config.size.extra;
+        r->basicFontSizeDoubleLine = config.size.basic;
 
         r->basicLightColor = D2D1::ColorF(config.color.basic.light.hexColor, config.color.basic.light.opacity);
         r->basicDarkColor = D2D1::ColorF(config.color.basic.dark.hexColor, config.color.basic.dark.opacity);
@@ -887,7 +887,7 @@ void NetworkServer::handleResetConfig(SOCKET clientSocket) {
         
         r->basicFontSize = config.size.basic;
         r->extraFontSize = config.size.extra;
-        r->basicFontSizeDoubleLine = config.size.extra;
+        r->basicFontSizeDoubleLine = config.size.basic;
 
         r->basicLightColor = D2D1::ColorF(config.color.basic.light.hexColor, config.color.basic.light.opacity);
         r->basicDarkColor = D2D1::ColorF(config.color.basic.dark.hexColor, config.color.basic.dark.opacity);
