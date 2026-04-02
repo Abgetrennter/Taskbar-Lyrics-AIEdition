@@ -232,7 +232,7 @@ const ConfigManager = {
      */
     syncFromBackend: (backendConfig) => {
         if (!backendConfig) return;
-        const sharedKeys = ["font", "color", "size", "style", "position", "margin", "align", "screen"];
+        const sharedKeys = ["font", "color", "size", "style", "lyrics", "effect", "position", "margin", "align", "screen"];
         for (const key of sharedKeys) {
             if (backendConfig[key] !== undefined) {
                 plugin.setConfig(key, backendConfig[key]);

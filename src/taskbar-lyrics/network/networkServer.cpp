@@ -510,59 +510,87 @@ std::string findAsset(const std::string& name) {
 void NetworkServer::handleConfigPage(SOCKET clientSocket) {
     std::string htmlPath = findAsset("config.html");
     std::string htmlContent = readFile(htmlPath);
-    
+
     if (htmlContent.empty()) {
         std::string res = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\nConfig file not found in assets.";
         send(clientSocket, res.c_str(), (int)res.length(), 0);
         closesocket(clientSocket);
         return;
     }
-    
+
     std::string fullHtml = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Taskbar Lyrics Settings</title>";
-    fullHtml += "<link rel='stylesheet' href='/style.css'>";
-    fullHtml += "<style>body{background:#fff; padding:20px; font-family: 'Microsoft YaHei UI', sans-serif;} .tab_box button { cursor: pointer; padding: 10px; } .content_box { margin-top: 20px; } .content { display: none; } .content.show { display: block; } .active { font-weight: bold; border-bottom: 2px solid #0078D7; }</style>";
+    fullHtml += "<style>";
+    fullHtml += "body { background: #1a1a2e; color: #e0e0e0; padding: 20px; font-family: 'Microsoft YaHei UI', sans-serif; }";
+    fullHtml += "#taskbar-lyrics-dom .tab_box { display: flex; gap: 4px; border-bottom: 1px solid #333; padding-bottom: 4px; }";
+    fullHtml += "#taskbar-lyrics-dom .tab_button { cursor: pointer; padding: 8px 16px; border: none; background: none; color: #aaa; font-size: 14px; border-radius: 4px 4px 0 0; }";
+    fullHtml += "#taskbar-lyrics-dom .tab_button:hover { color: #fff; background: rgba(255,255,255,0.05); }";
+    fullHtml += "#taskbar-lyrics-dom .tab_button.active { color: #fff; background: #0078D7; font-weight: bold; }";
+    fullHtml += "#taskbar-lyrics-dom .content_box { margin-top: 16px; }";
+    fullHtml += "#taskbar-lyrics-dom .content { display: none; }";
+    fullHtml += "#taskbar-lyrics-dom .content.show { display: block; }";
+    fullHtml += "#taskbar-lyrics-dom .item_container { display: flex; align-items: center; gap: 10px; margin: 8px 0; }";
+    fullHtml += "#taskbar-lyrics-dom .text_container { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }";
+    fullHtml += "#taskbar-lyrics-dom .text_container p { margin: 4px 0; }";
+    fullHtml += "#taskbar-lyrics-dom h1 { display: flex; align-items: center; gap: 10px; margin: 12px 0; }";
+    fullHtml += "#taskbar-lyrics-dom h1 strong { font-size: 16px; }";
+    fullHtml += "#taskbar-lyrics-dom hr { border: none; border-top: 1px solid #333; margin: 16px 0; }";
+    fullHtml += "#taskbar-lyrics-dom input.u-txt { background: #2a2a3e; border: 1px solid #444; color: #e0e0e0; border-radius: 4px; padding: 4px 8px; }";
+    fullHtml += "#taskbar-lyrics-dom input.u-txt:focus { outline: none; border-color: #0078D7; }";
+    fullHtml += "input.color-input { width: 60px; height: 28px; padding: 2px; cursor: pointer; }";
+    fullHtml += "input.number-input { width: 120px; }";
+    fullHtml += "button { cursor: pointer; padding: 6px 14px; border: 1px solid #555; border-radius: 4px; background: #2a2a3e; color: #e0e0e0; font-size: 13px; }";
+    fullHtml += "button:hover { background: #3a3a4e; }";
+    fullHtml += ".u-ibtn5 { background: #0078D7; border-color: #0078D7; color: #fff; }";
+    fullHtml += ".u-ibtn5:hover { background: #1a8ae8; }";
+    fullHtml += ".switch-btn { width: 44px; height: 22px; appearance: none; border-radius: 20px; border: 1px solid #555; background: #333; position: relative; cursor: pointer; }";
+    fullHtml += ".switch-btn::before { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #888; transition: all 0.2s; }";
+    fullHtml += ".switch-btn:checked { background: #0078D7; border-color: #0078D7; }";
+    fullHtml += ".switch-btn:checked::before { left: calc(100% - 18px); background: #fff; }";
+    fullHtml += ".u-select { display: inline-block; position: relative; min-width: 200px; }";
+    fullHtml += ".u-select .value { padding: 6px 10px; background: #2a2a3e; border: 1px solid #444; border-radius: 4px; cursor: pointer; }";
+    fullHtml += ".u-select .sltwrap { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #2a2a3e; border: 1px solid #444; border-radius: 0 0 4px 4px; z-index: 100; max-height: 200px; overflow-y: auto; }";
+    fullHtml += ".u-select .option { padding: 6px 10px; cursor: pointer; list-style: none; }";
+    fullHtml += ".u-select .option:hover { background: #3a3a4e; }";
+    fullHtml += ".slope-active { background: #0078D7 !important; color: #fff !important; border-color: #0078D7 !important; }";
+    fullHtml += "</style>";
     fullHtml += "</head><body>";
     fullHtml += htmlContent;
-    
+
     // Inject JS
     fullHtml += "<script>";
-    fullHtml += R"(
-        // Tabs
-        const tabs = document.querySelectorAll('.tab_button');
-        const contents = document.querySelectorAll('.content');
-        tabs.forEach((tab, index) => {
+    fullHtml += R"js(
+        // --- Helpers ---
+        const $ = s => document.querySelector(s);
+        const $$ = s => document.querySelectorAll(s);
+        const hexToColor = n => '#' + (n || 0).toString(16).padStart(6, '0');
+        const colorToHex = c => parseInt(c.substring(1), 16);
+
+        // --- Tabs ---
+        const tabs = $$('.tab_button');
+        const contents = $$('.content');
+        tabs.forEach((tab, i) => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
                 contents.forEach(c => c.classList.remove('show'));
                 tab.classList.add('active');
-                if(contents[index]) contents[index].classList.add('show');
+                if (contents[i]) contents[i].classList.add('show');
             });
         });
 
-        function hexToColor(hex) {
-            return '#' + (hex || 0).toString(16).padStart(6, '0');
-        }
-        
-        function colorToHex(color) {
-            return parseInt(color.substring(1), 16);
-        }
-
-        // Custom Select
-        document.querySelectorAll('.u-select').forEach(sel => {
+        // --- Custom Select ---
+        document.addEventListener('click', () => {
+            $$('.sltwrap').forEach(w => w.style.display = 'none');
+        });
+        $$('.u-select').forEach(sel => {
             const val = sel.querySelector('.value');
             const wrap = sel.querySelector('.sltwrap');
-            const opts = sel.querySelectorAll('.option');
-            
-            sel.addEventListener('click', (e) => {
-                document.querySelectorAll('.sltwrap').forEach(w => {
-                    if(w !== wrap) w.style.display = 'none';
-                });
-                wrap.style.display = wrap.style.display === 'block' ? 'none' : 'block';
+            sel.addEventListener('click', e => {
                 e.stopPropagation();
+                $$('.sltwrap').forEach(w => { if (w !== wrap) w.style.display = 'none'; });
+                wrap.style.display = wrap.style.display === 'block' ? 'none' : 'block';
             });
-            
-            opts.forEach(opt => {
-                opt.addEventListener('click', (e) => {
+            sel.querySelectorAll('.option').forEach(opt => {
+                opt.addEventListener('click', e => {
                     e.stopPropagation();
                     val.textContent = opt.textContent;
                     sel.dataset.value = opt.dataset.value;
@@ -571,238 +599,226 @@ void NetworkServer::handleConfigPage(SOCKET clientSocket) {
             });
         });
 
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.sltwrap').forEach(w => w.style.display = 'none');
-        });
-
-        // Style Buttons Logic
-        const slopeMap = { 'normal': 0, 'oblique': 1, 'italic': 2 };
+        // --- Slope buttons ---
+        const slopeMap = { normal: 0, oblique: 1, italic: 2 };
         const slopeRev = { 0: 'normal', 1: 'oblique', 2: 'italic' };
-        
         let selSlope = { basic: 0, extra: 0 };
-        
+
         ['basic', 'extra'].forEach(type => {
             ['normal', 'oblique', 'italic'].forEach(slope => {
-                const btn = document.querySelector(`.${type}-${slope}`);
-                if(btn) {
-                    btn.addEventListener('click', () => {
-                        // Reset style for group
-                        [`${type}-normal`, `${type}-oblique`, `${type}-italic`].forEach(c => {
-                            document.querySelector(`.${c}`).style.backgroundColor = '';
-                            document.querySelector(`.${c}`).style.color = '';
-                        });
-                        // Set active
-                        btn.style.backgroundColor = '#0078D7';
-                        btn.style.color = '#fff';
-                        selSlope[type] = slopeMap[slope];
+                const btn = $(`.${type}-${slope}`);
+                if (btn) btn.addEventListener('click', () => {
+                    [`${type}-normal`, `${type}-oblique`, `${type}-italic`].forEach(c => {
+                        const el = $(`.${c}`); if (el) el.classList.remove('slope-active');
                     });
-                }
+                    btn.classList.add('slope-active');
+                    selSlope[type] = slopeMap[slope];
+                });
             });
         });
 
-        // Alignment Buttons Logic
-        const alignMap = { 'left': 1, 'center': 2, 'right': 3 };
-        const alignRev = { 1: 'left', 2: 'center', 3: 'right' };
-        let selAlign = { basic: 1, extra: 1 };
-        
+        // --- Align buttons ---
+        const alignMap = { left: 0, center: 2, right: 1 };
+        const alignRev = { 0: 'left', 1: 'right', 2: 'center' };
+        let selAlign = { basic: 0, extra: 0 };
+
         ['basic', 'extra'].forEach(type => {
             ['left', 'center', 'right'].forEach(align => {
-                const btn = document.querySelector(`.${type}-align-${align}`);
-                if(btn) {
-                    btn.addEventListener('click', () => {
-                        [`${type}-align-left`, `${type}-align-center`, `${type}-align-right`].forEach(c => {
-                            document.querySelector(`.${c}`).style.backgroundColor = '';
-                            document.querySelector(`.${c}`).style.color = '';
-                        });
-                        btn.style.backgroundColor = '#0078D7';
-                        btn.style.color = '#fff';
-                        selAlign[type] = alignMap[align];
+                const btn = $(`.${type}-align-${align}`);
+                if (btn) btn.addEventListener('click', () => {
+                    [`${type}-align-left`, `${type}-align-center`, `${type}-align-right`].forEach(c => {
+                        const el = $(`.${c}`); if (el) el.classList.remove('slope-active');
                     });
-                }
+                    btn.classList.add('slope-active');
+                    selAlign[type] = alignMap[align];
+                });
             });
         });
 
-        // Load Config
-        fetch('/api/config')
-        .then(res => res.json())
-        .then(data => {
-            if(data) {
+        // --- Load config from backend ---
+        function loadConfig() {
+            fetch('/api/config').then(r => r.json()).then(d => {
+                if (!d) return;
+
                 // Font
-                document.querySelector('.font-family').value = data.font.font_family;
-                
+                const fontEl = $('.font-family');
+                if (fontEl) fontEl.value = d.font?.font_family || '';
+
                 // Color
-                document.querySelector('.basic-light-color').value = hexToColor(data.color.basic.light.hex_color);
-                document.querySelector('.basic-light-opacity').value = data.color.basic.light.opacity;
-                document.querySelector('.basic-dark-color').value = hexToColor(data.color.basic.dark.hex_color);
-                document.querySelector('.basic-dark-opacity').value = data.color.basic.dark.opacity;
-                document.querySelector('.extra-light-color').value = hexToColor(data.color.extra.light.hex_color);
-                document.querySelector('.extra-light-opacity').value = data.color.extra.light.opacity;
-                document.querySelector('.extra-dark-color').value = hexToColor(data.color.extra.dark.hex_color);
-                document.querySelector('.extra-dark-opacity').value = data.color.extra.dark.opacity;
-                
+                const setColor = (sel, val) => { const el = $(sel); if (el) el.value = val; };
+                if (d.color) {
+                    setColor('.basic-light-color', hexToColor(d.color.basic?.light?.hex_color));
+                    setColor('.basic-light-opacity', d.color.basic?.light?.opacity);
+                    setColor('.basic-dark-color', hexToColor(d.color.basic?.dark?.hex_color));
+                    setColor('.basic-dark-opacity', d.color.basic?.dark?.opacity);
+                    setColor('.extra-light-color', hexToColor(d.color.extra?.light?.hex_color));
+                    setColor('.extra-light-opacity', d.color.extra?.light?.opacity);
+                    setColor('.extra-dark-color', hexToColor(d.color.extra?.dark?.hex_color));
+                    setColor('.extra-dark-opacity', d.color.extra?.dark?.opacity);
+                }
+
                 // Size
-                document.querySelector('.basic-size').value = data.size.basic;
-                document.querySelector('.extra-size').value = data.size.extra;
+                if (d.size) {
+                    setColor('.basic-size', d.size.basic);
+                    setColor('.extra-size', d.size.extra);
+                }
 
                 // Style
-                document.querySelector('.basic-weight').dataset.value = data.style.basic.weight.value;
-                document.querySelector('.basic-weight .value').textContent = data.style.basic.weight.textContent;
-                
-                // Slope
-                const bs = slopeRev[data.style.basic.slope];
-                if(bs) document.querySelector(`.basic-${bs}`).click();
-                
-                document.querySelector('.basic-underline').checked = data.style.basic.underline;
-                document.querySelector('.basic-strikethrough').checked = data.style.basic.strikethrough;
+                if (d.style) {
+                    const bw = $('.basic-weight');
+                    if (bw) { bw.dataset.value = d.style.basic?.weight?.value; bw.querySelector('.value').textContent = d.style.basic?.weight?.textContent || ''; }
+                    const bs = slopeRev[d.style.basic?.slope];
+                    if (bs) $(`.basic-${bs}`)?.classList.add('slope-active');
+                    selSlope.basic = d.style.basic?.slope || 0;
+                    setColor('.basic-underline', d.style.basic?.underline);
+                    const bu = $('.basic-underline'); if (bu) bu.checked = !!d.style.basic?.underline;
+                    const bst = $('.basic-strikethrough'); if (bst) bst.checked = !!d.style.basic?.strikethrough;
 
-                document.querySelector('.extra-weight').dataset.value = data.style.extra.weight.value;
-                document.querySelector('.extra-weight .value').textContent = data.style.extra.weight.textContent;
-                
-                const es = slopeRev[data.style.extra.slope];
-                if(es) document.querySelector(`.extra-${es}`).click();
-                
-                document.querySelector('.extra-underline').checked = data.style.extra.underline;
-                document.querySelector('.extra-strikethrough').checked = data.style.extra.strikethrough;
+                    const ew = $('.extra-weight');
+                    if (ew) { ew.dataset.value = d.style.extra?.weight?.value; ew.querySelector('.value').textContent = d.style.extra?.weight?.textContent || ''; }
+                    const es = slopeRev[d.style.extra?.slope];
+                    if (es) $(`.extra-${es}`)?.classList.add('slope-active');
+                    selSlope.extra = d.style.extra?.slope || 0;
+                    const eu = $('.extra-underline'); if (eu) eu.checked = !!d.style.extra?.underline;
+                    const est = $('.extra-strikethrough'); if (est) est.checked = !!d.style.extra?.strikethrough;
+                }
+
+                // Lyrics
+                if (d.lyrics) {
+                    const rm = $('.retrieval-method');
+                    if (rm) { rm.dataset.value = d.lyrics.retrieval_method?.value; rm.querySelector('.value').textContent = d.lyrics.retrieval_method?.textContent || ''; }
+                    const k = $('.karaoke-switch'); if (k) k.checked = !!d.lyrics.karaoke;
+                }
+
+                // Effect
+                if (d.effect) {
+                    const nlp = $('.next-line-lyrics-position');
+                    if (nlp) { nlp.dataset.value = d.effect.next_line_lyrics_position?.value; nlp.querySelector('.value').textContent = d.effect.next_line_lyrics_position?.textContent || ''; }
+                    const es2 = $('.extra-show');
+                    if (es2) { es2.dataset.value = d.effect.extra_show?.value; es2.querySelector('.value').textContent = d.effect.extra_show?.textContent || ''; }
+                    setColor('.adjust', d.effect.adjust);
+                }
 
                 // Align
-                const ba = alignRev[data.align.basic];
-                if(ba) document.querySelector(`.basic-align-${ba}`).click();
-                const ea = alignRev[data.align.extra];
-                if(ea) document.querySelector(`.extra-align-${ea}`).click();
+                if (d.align) {
+                    selAlign.basic = d.align.basic ?? 0;
+                    selAlign.extra = d.align.extra ?? 0;
+                    const ba = alignRev[d.align.basic]; if (ba) $(`.basic-align-${ba}`)?.classList.add('slope-active');
+                    const ea = alignRev[d.align.extra]; if (ea) $(`.extra-align-${ea}`)?.classList.add('slope-active');
+                }
 
                 // Position
-                document.querySelector('.position-select').dataset.value = data.position.position.value;
-                document.querySelector('.position-select .value').textContent = data.position.position.textContent;
+                if (d.position?.position) {
+                    const wp = $('.window-position');
+                    if (wp) { wp.dataset.value = d.position.position.value; wp.querySelector('.value').textContent = d.position.position.textContent || ''; }
+                }
 
                 // Margin
-                document.querySelector('.margin-left').value = data.margin.left;
-                document.querySelector('.margin-right').value = data.margin.right;
-                
-                // Screen
-                document.querySelector('.screen-select').dataset.value = data.screen.parent_taskbar.value;
-                document.querySelector('.screen-select .value').textContent = data.screen.parent_taskbar.textContent;
-                
-                // Hitokoto
-                if (data.hitokoto) {
-                    document.querySelector('.hitokoto-json-path').value = data.hitokoto.hitokoto_json_path || "";
-                    document.querySelector('.hitokoto-interval').value = data.hitokoto.hitokoto_interval || 30;
+                if (d.margin) {
+                    setColor('.margin-settings .left', d.margin.left);
+                    setColor('.margin-settings .right', d.margin.right);
                 }
-            }
-        });
 
-        // Save Config
-        document.querySelectorAll('.apply').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const config = {
-                    font: {
-                        font_family: document.querySelector('.font-family').value
-                    },
+                // Screen
+                if (d.screen?.parent_taskbar) {
+                    const pt = $('.parent-taskbar');
+                    if (pt) { pt.dataset.value = d.screen.parent_taskbar.value; pt.querySelector('.value').textContent = d.screen.parent_taskbar.textContent || ''; }
+                }
+
+                // Hitokoto
+                if (d.hitokoto) {
+                    setColor('.hitokoto-json-path', d.hitokoto.hitokoto_json_path || '');
+                    setColor('.hitokoto-interval', d.hitokoto.hitokoto_interval || 30);
+                }
+            });
+        }
+        loadConfig();
+
+        // --- Build full config from current UI state ---
+        function buildConfig() {
+            return {
+                font: { font_family: $('.font-family')?.value || '' },
                 color: {
                     basic: {
-                        light: {
-                            hex_color: colorToHex(document.querySelector('.basic-light-color').value),
-                            opacity: parseFloat(document.querySelector('.basic-light-opacity').value)
-                        },
-                        dark: {
-                            hex_color: colorToHex(document.querySelector('.basic-dark-color').value),
-                            opacity: parseFloat(document.querySelector('.basic-dark-opacity').value)
-                        }
+                        light: { hex_color: colorToHex($('.basic-light-color')?.value || '#000000'), opacity: parseFloat($('.basic-light-opacity')?.value || 1) },
+                        dark: { hex_color: colorToHex($('.basic-dark-color')?.value || '#ffffff'), opacity: parseFloat($('.basic-dark-opacity')?.value || 1) }
                     },
                     extra: {
-                        light: {
-                            hex_color: colorToHex(document.querySelector('.extra-light-color').value),
-                            opacity: parseFloat(document.querySelector('.extra-light-opacity').value)
-                        },
-                        dark: {
-                            hex_color: colorToHex(document.querySelector('.extra-dark-color').value),
-                            opacity: parseFloat(document.querySelector('.extra-dark-opacity').value)
-                        }
+                        light: { hex_color: colorToHex($('.extra-light-color')?.value || '#000000'), opacity: parseFloat($('.extra-light-opacity')?.value || 1) },
+                        dark: { hex_color: colorToHex($('.extra-dark-color')?.value || '#ffffff'), opacity: parseFloat($('.extra-dark-opacity')?.value || 1) }
                     }
                 },
                 size: {
-                    basic: parseFloat(document.querySelector('.basic-size').value),
-                    extra: parseFloat(document.querySelector('.extra-size').value)
+                    basic: parseFloat($('.basic-size')?.value || 20),
+                    extra: parseFloat($('.extra-size')?.value || 16)
                 },
                 style: {
                     basic: {
-                        weight: {
-                            value: parseInt(document.querySelector('.basic-weight').dataset.value || 400),
-                            textContent: document.querySelector('.basic-weight .value').textContent
-                        },
-                        slope: selSlope.basic,
-                        underline: document.querySelector('.basic-underline').checked,
-                        strikethrough: document.querySelector('.basic-strikethrough').checked
+                        weight: { value: parseInt($('.basic-weight')?.dataset.value || 400), textContent: $('.basic-weight .value')?.textContent || '' },
+                        slope: selSlope.basic, underline: !!$('.basic-underline')?.checked, strikethrough: !!$('.basic-strikethrough')?.checked
                     },
                     extra: {
-                        weight: {
-                            value: parseInt(document.querySelector('.extra-weight').dataset.value || 400),
-                            textContent: document.querySelector('.extra-weight .value').textContent
-                        },
-                        slope: selSlope.extra,
-                        underline: document.querySelector('.extra-underline').checked,
-                        strikethrough: document.querySelector('.extra-strikethrough').checked
+                        weight: { value: parseInt($('.extra-weight')?.dataset.value || 400), textContent: $('.extra-weight .value')?.textContent || '' },
+                        slope: selSlope.extra, underline: !!$('.extra-underline')?.checked, strikethrough: !!$('.extra-strikethrough')?.checked
                     }
                 },
-                align: {
-                    basic: selAlign.basic,
-                    extra: selAlign.extra
+                lyrics: {
+                    retrieval_method: { value: parseInt($('.retrieval-method')?.dataset.value || 1), textContent: $('.retrieval-method .value')?.textContent || '' },
+                    karaoke: !!$('.karaoke-switch')?.checked
                 },
-                position: {
-                    position: {
-                        value: parseInt(document.querySelector('.position-select').dataset.value || 0),
-                        textContent: document.querySelector('.position-select .value').textContent
-                    }
+                effect: {
+                    next_line_lyrics_position: { value: parseInt($('.next-line-lyrics-position')?.dataset.value || 0), textContent: $('.next-line-lyrics-position .value')?.textContent || '' },
+                    extra_show: { value: parseInt($('.extra-show')?.dataset.value || 2), textContent: $('.extra-show .value')?.textContent || '' },
+                    adjust: parseFloat($('.adjust')?.value || 0)
                 },
-                margin: {
-                    left: parseInt(document.querySelector('.margin-left').value),
-                    right: parseInt(document.querySelector('.margin-right').value)
-                },
-                screen: {
-                    parent_taskbar: {
-                        value: document.querySelector('.screen-select').dataset.value,
-                        textContent: document.querySelector('.screen-select .value').textContent
-                    }
-                }
+                align: { basic: selAlign.basic, extra: selAlign.extra },
+                position: { position: { value: parseInt($('.window-position')?.dataset.value || 0), textContent: $('.window-position .value')?.textContent || '' } },
+                margin: { left: parseInt($('.margin-settings .left')?.value || 0), right: parseInt($('.margin-settings .right')?.value || 0) },
+                screen: { parent_taskbar: { value: $('.parent-taskbar')?.dataset.value || 'Shell_TrayWnd', textContent: $('.parent-taskbar .value')?.textContent || '' } }
             };
+        }
 
-            fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(config)
-            }).then(() => {
-                alert('保存成功');
-            });
-
-            // Send Hitokoto Config
-            const hitokotoConfig = {
-                hitokoto_json_path: document.querySelector('.hitokoto-json-path').value,
-                hitokoto_interval: parseInt(document.querySelector('.hitokoto-interval').value)
-            };
-            
-            fetch('/taskbar/hitokoto', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(hitokotoConfig)
+        // --- Apply buttons: save then reload ---
+        $$('.apply').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const config = buildConfig();
+                fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                }).then(() => {
+                    // Also send hitokoto separately for backward compat
+                    fetch('/taskbar/hitokoto', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            hitokoto_json_path: $('.hitokoto-json-path')?.value || '',
+                            hitokoto_interval: parseInt($('.hitokoto-interval')?.value || 30)
+                        })
+                    });
+                    alert('保存成功');
+                });
             });
         });
-    });
 
-        // Reset Config
-        document.querySelectorAll('.reset').forEach(btn => {
+        // --- Reset buttons ---
+        $$('.reset').forEach(btn => {
             btn.addEventListener('click', () => {
-                if(confirm('确定要恢复默认设置吗？')) {
-                    fetch('/api/reset', { method: 'POST' })
-                    .then(() => {
-                        alert('已重置，请刷新页面');
-                        location.reload();
+                if (confirm('确定要恢复默认设置吗？')) {
+                    fetch('/api/reset', { method: 'POST' }).then(() => {
+                        alert('已重置');
+                        loadConfig();
                     });
                 }
             });
         });
-    )";
+    )js";
     fullHtml += "</script></body></html>";
-    
-    std::string response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + std::to_string(fullHtml.length()) + "\r\n\r\n" + fullHtml;
+
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Access-Control-Allow-Origin: *\r\n"
+                           "Content-Type: text/html; charset=utf-8\r\n"
+                           "Content-Length: " + std::to_string(fullHtml.length()) + "\r\n\r\n" + fullHtml;
     send(clientSocket, response.c_str(), (int)response.length(), 0);
     closesocket(clientSocket);
 }
@@ -825,7 +841,12 @@ void NetworkServer::handleStyleCss(SOCKET clientSocket) {
 
 void NetworkServer::handleGetConfig(SOCKET clientSocket) {
     std::string json = ConfigManager::getInstance().GetJSON();
-    std::string response = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(json.length()) + "\r\n\r\n" + json;
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Access-Control-Allow-Origin: *\r\n"
+                           "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+                           "Access-Control-Allow-Headers: Content-Type\r\n"
+                           "Content-Type: application/json\r\n"
+                           "Content-Length: " + std::to_string(json.length()) + "\r\n\r\n" + json;
     send(clientSocket, response.c_str(), (int)response.length(), 0);
     closesocket(clientSocket);
 }
@@ -871,7 +892,11 @@ void NetworkServer::handleUpdateConfig(SOCKET clientSocket, const std::string& b
         PostMessage(m_window->windowHandle, WM_PAINT, NULL, NULL);
     }
 
-    std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Access-Control-Allow-Origin: *\r\n"
+                           "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+                           "Access-Control-Allow-Headers: Content-Type\r\n"
+                           "Content-Length: 0\r\n\r\n";
     send(clientSocket, response.c_str(), (int)response.length(), 0);
     closesocket(clientSocket);
 }
@@ -916,7 +941,11 @@ void NetworkServer::handleResetConfig(SOCKET clientSocket) {
         PostMessage(m_window->windowHandle, WM_PAINT, NULL, NULL);
     }
     
-    std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+    std::string response = "HTTP/1.1 200 OK\r\n"
+                           "Access-Control-Allow-Origin: *\r\n"
+                           "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+                           "Access-Control-Allow-Headers: Content-Type\r\n"
+                           "Content-Length: 0\r\n\r\n";
     send(clientSocket, response.c_str(), (int)response.length(), 0);
     closesocket(clientSocket);
 }

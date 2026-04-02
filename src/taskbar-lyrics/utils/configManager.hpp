@@ -61,6 +61,20 @@ struct ScreenConfig {
     std::string parentTaskbarText = "主屏幕";
 };
 
+struct LyricsConfig {
+    int retrievalMethodValue = 1;
+    std::string retrievalMethodText = "使用LibLyric解析获取歌词";
+    bool karaoke = false;
+};
+
+struct EffectConfig {
+    int nextLinePositionValue = 0;
+    std::string nextLinePositionText = "副歌词，下句歌词显示在这";
+    int extraShowValue = 2;
+    std::string extraShowText = "当前翻译，没则用上个选项";
+    float adjust = 0.0f;
+};
+
 struct HitokotoConfig {
     std::string jsonPath = "e:\\Code\\Taskbar-Lyrics-1.x.x\\combined_lyrics.json";
     int interval = 30; // seconds
@@ -71,6 +85,8 @@ struct AppConfig {
     ColorConfig color;
     SizeConfig size;
     StyleConfig style;
+    LyricsConfig lyrics;
+    EffectConfig effect;
     PositionConfig position;
     MarginConfig margin;
     AlignConfig align;

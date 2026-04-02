@@ -1,0 +1,3 @@
+[submodule "reference/taskbarlyrics"]
+	path = reference/taskbarlyrics
+	url = https://github.com/ANYNC/TaskbarLyrics

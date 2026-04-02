@@ -126,6 +126,44 @@ void from_json(const json& j, ScreenConfig& p) {
     }
 }
 
+// LyricsConfig
+void to_json(json& j, const LyricsConfig& p) {
+    j = json{
+        {"retrieval_method", {{"value", p.retrievalMethodValue}, {"textContent", p.retrievalMethodText}}},
+        {"karaoke", p.karaoke}
+    };
+}
+void from_json(const json& j, LyricsConfig& p) {
+    if(j.contains("retrieval_method")) {
+        auto& rm = j["retrieval_method"];
+        if(rm.contains("value")) rm.at("value").get_to(p.retrievalMethodValue);
+        if(rm.contains("textContent")) rm.at("textContent").get_to(p.retrievalMethodText);
+    }
+    if(j.contains("karaoke")) j.at("karaoke").get_to(p.karaoke);
+}
+
+// EffectConfig
+void to_json(json& j, const EffectConfig& p) {
+    j = json{
+        {"next_line_lyrics_position", {{"value", p.nextLinePositionValue}, {"textContent", p.nextLinePositionText}}},
+        {"extra_show", {{"value", p.extraShowValue}, {"textContent", p.extraShowText}}},
+        {"adjust", p.adjust}
+    };
+}
+void from_json(const json& j, EffectConfig& p) {
+    if(j.contains("next_line_lyrics_position")) {
+        auto& nlp = j["next_line_lyrics_position"];
+        if(nlp.contains("value")) nlp.at("value").get_to(p.nextLinePositionValue);
+        if(nlp.contains("textContent")) nlp.at("textContent").get_to(p.nextLinePositionText);
+    }
+    if(j.contains("extra_show")) {
+        auto& es = j["extra_show"];
+        if(es.contains("value")) es.at("value").get_to(p.extraShowValue);
+        if(es.contains("textContent")) es.at("textContent").get_to(p.extraShowText);
+    }
+    if(j.contains("adjust")) j.at("adjust").get_to(p.adjust);
+}
+
 // HitokotoConfig
 void to_json(json& j, const HitokotoConfig& p) {
     j = json{
@@ -145,6 +183,8 @@ void to_json(json& j, const AppConfig& p) {
         {"color", p.color},
         {"size", p.size},
         {"style", p.style},
+        {"lyrics", p.lyrics},
+        {"effect", p.effect},
         {"position", p.position},
         {"margin", p.margin},
         {"align", p.align},
@@ -157,6 +197,8 @@ void from_json(const json& j, AppConfig& p) {
     if(j.contains("color")) j.at("color").get_to(p.color);
     if(j.contains("size")) j.at("size").get_to(p.size);
     if(j.contains("style")) j.at("style").get_to(p.style);
+    if(j.contains("lyrics")) j.at("lyrics").get_to(p.lyrics);
+    if(j.contains("effect")) j.at("effect").get_to(p.effect);
     if(j.contains("position")) j.at("position").get_to(p.position);
     if(j.contains("margin")) j.at("margin").get_to(p.margin);
     if(j.contains("align")) j.at("align").get_to(p.align);
