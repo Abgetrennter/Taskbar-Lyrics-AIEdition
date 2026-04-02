@@ -4,6 +4,10 @@
 #include <windows.h>
 #include "../network/networkServer.hpp"
 #include "../ui/lyricsWindow.hpp"
+#include "../ui/trayIcon.hpp"
+
+#define WM_TRAYICON (WM_USER + 1)
+#define WM_RELOAD_CONFIG (WM_USER + 2)
 
 class TaskbarLyrics
 {
@@ -14,10 +18,26 @@ public:
     NetworkServer* networkServer = nullptr;
     LyricsWindow* lyricsWindow = nullptr;
 
-private:
-    HANDLE m_waitHandle = nullptr;
-    unsigned short m_port = 3798;
+    void handleTrayCommand(int commandId);
+    void ReloadConfig(); // Added
 
-    void checkNcmProcess();
+private:
+    unsigned short m_port = 27232;
+    TrayIcon* m_trayIcon = nullptr;
+    HWND m_msgHwnd = NULL;
+    HINSTANCE m_hInstance = NULL;
+    
+    static TaskbarLyrics* s_instance;
+
     void getPort();
+    void createMessageWindow();
+    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    // Commands
+    void onStartService();
+    void onStopService();
+    void onConfig();
+    void onStatus();
+    void onOpenLogs();
+    void onExit();
 };

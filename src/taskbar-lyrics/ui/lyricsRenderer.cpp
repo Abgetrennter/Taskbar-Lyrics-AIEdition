@@ -1,5 +1,8 @@
 #include "lyricsRenderer.hpp"
 #include <algorithm> // for max
+#include <cstdio>
+#include <chrono>
+#include "../utils/logger.hpp"
 
 #pragma comment (lib, "d2d1.lib")
 #pragma comment (lib, "dwrite.lib")
@@ -7,12 +10,23 @@
 LyricsRenderer::LyricsRenderer(HWND* windowHandle)
 {
     m_windowHandle = windowHandle;
+    
+    lastLyricsUpdateTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
 
     taskbarHandle = FindWindow(L"Shell_TrayWnd", NULL);
     notificationAreaHandle = FindWindowEx(taskbarHandle, NULL, L"TrayNotifyWnd", NULL);
     startButtonHandle = FindWindowEx(taskbarHandle, NULL, L"Start", NULL);
     HWND reBarWindow = FindWindowEx(taskbarHandle, NULL, L"ReBarWindow32", NULL);
     activeAreaHandle = FindWindowEx(reBarWindow, NULL, L"MSTaskSwWClass", NULL);
+
+    Logger::Info("LyricsRenderer Init Handles:");
+    Logger::Info("Taskbar: %p", taskbarHandle);
+    Logger::Info("TrayNotify: %p", notificationAreaHandle);
+    Logger::Info("StartButton: %p", startButtonHandle);
+    Logger::Info("ReBar: %p", reBarWindow);
+    Logger::Info("ActiveArea: %p", activeAreaHandle);
 
     // Create D2D Factory
     D2D1CreateFactory(
@@ -59,6 +73,25 @@ LyricsRenderer::~LyricsRenderer()
     m_windowHandle = nullptr;
 }
 
+void LyricsRenderer::updateParentTaskbar(const std::string& taskbarName) {
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &taskbarName[0], (int)taskbarName.size(), NULL, 0);
+    std::wstring wname(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &taskbarName[0], (int)taskbarName.size(), &wname[0], size_needed);
+
+    taskbarHandle = FindWindow(wname.c_str(), NULL);
+    notificationAreaHandle = FindWindowEx(taskbarHandle, NULL, L"TrayNotifyWnd", NULL);
+    startButtonHandle = FindWindowEx(taskbarHandle, NULL, L"Start", NULL);
+    HWND reBarWindow = FindWindowEx(taskbarHandle, NULL, L"ReBarWindow32", NULL);
+    activeAreaHandle = FindWindowEx(reBarWindow, NULL, L"MSTaskSwWClass", NULL);
+
+    Logger::Info("LyricsRenderer Update Parent Taskbar: %s", taskbarName.c_str());
+    Logger::Info("Taskbar: %p", taskbarHandle);
+
+    if (m_windowHandle && *m_windowHandle) {
+        SetParent(*m_windowHandle, taskbarHandle);
+    }
+}
+
 void LyricsRenderer::updateWindow()
 {
     GetWindowRect(taskbarHandle, &taskbarRect);
@@ -70,6 +103,14 @@ void LyricsRenderer::updateWindow()
     long top = 0;
     long width = 0;
     long height = taskbarRect.bottom - taskbarRect.top;
+
+    static int logCounter = 0;
+    if (logCounter++ % 60 == 0) { // Log once every 60 updates to avoid spam
+        Logger::Info("UpdateWindow Rects:");
+        Logger::Info("Taskbar: %ld %ld %ld %ld", taskbarRect.left, taskbarRect.top, taskbarRect.right, taskbarRect.bottom);
+        Logger::Info("TrayNotify: %ld %ld %ld %ld", notificationAreaRect.left, notificationAreaRect.top, notificationAreaRect.right, notificationAreaRect.bottom);
+        Logger::Info("ActiveArea: %ld %ld %ld %ld", activeAreaRect.left, activeAreaRect.top, activeAreaRect.right, activeAreaRect.bottom);
+    }
 
     switch (windowAlignment)
     {
@@ -128,6 +169,10 @@ void LyricsRenderer::updateWindow()
             width = notificationAreaRect.left - activeAreaRect.right - leftMargin - rightMargin;
         }
         break;
+    }
+
+    if (logCounter % 60 == 1) { // Log sync with previous
+        Logger::Info("MoveWindow: L=%ld, T=%ld, W=%ld, H=%ld", left, top, width, height);
     }
 
     MoveWindow(*m_windowHandle, left, top, width, height, false);

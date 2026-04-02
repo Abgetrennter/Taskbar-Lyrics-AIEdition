@@ -26,6 +26,9 @@
         <ClInclude Include="src\taskbar-lyrics\utils\jsonUtils.hpp">
             <Filter>头文件</Filter>
         </ClInclude>
+        <ClInclude Include="src\taskbar-lyrics\utils\hitokotoManager.hpp">
+            <Filter>头文件</Filter>
+        </ClInclude>
         <ClCompile Include="src\taskbar-lyrics\core\taskbarLyrics.cpp">
             <Filter>源文件</Filter>
         </ClCompile>
@@ -36,6 +39,9 @@
             <Filter>源文件</Filter>
         </ClCompile>
         <ClCompile Include="src\taskbar-lyrics\ui\lyricsWindow.cpp">
+            <Filter>源文件</Filter>
+        </ClCompile>
+        <ClCompile Include="src\taskbar-lyrics\utils\hitokotoManager.cpp">
             <Filter>源文件</Filter>
         </ClCompile>
         <ClCompile Include="src\taskbar-lyrics\utils\jsonUtils.cpp">

@@ -15,12 +15,24 @@
     <ClInclude Include="src\taskbar-lyrics\network\networkServer.hpp" />
     <ClInclude Include="src\taskbar-lyrics\ui\lyricsRenderer.hpp" />
     <ClInclude Include="src\taskbar-lyrics\ui\lyricsWindow.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\ui\configWindow.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\ui\trayIcon.hpp" />
     <ClInclude Include="src\taskbar-lyrics\utils\jsonUtils.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\utils\hitokotoManager.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\utils\logger.hpp" />
+    <ClInclude Include="src\taskbar-lyrics\utils\configManager.hpp" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\taskbar-lyrics\core\taskbarLyrics.cpp" />
     <ClCompile Include="src\taskbar-lyrics\network\networkServer.cpp" />
     <ClCompile Include="src\taskbar-lyrics\ui\lyricsRenderer.cpp" />
     <ClCompile Include="src\taskbar-lyrics\ui\lyricsWindow.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\ui\configWindow.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\ui\trayIcon.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\utils\hitokotoManager.cpp" />
     <ClCompile Include="src\taskbar-lyrics\utils\jsonUtils.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\utils\logger.cpp" />
+    <ClCompile Include="src\taskbar-lyrics\utils\configManager.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -71,6 +83,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -94,7 +108,7 @@
       <Optimization>MinSpace</Optimization>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
-      <LanguageStandard>stdcpp14</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

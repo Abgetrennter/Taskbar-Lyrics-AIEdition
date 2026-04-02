@@ -4,7 +4,7 @@
 
 ## 1. 代码结构分析
 
-该项目采用前后端分离的混合架构，由 **BetterNCM 插件 (前端)** 和 **Windows 原生程序 (后端)** 组成。
+该项目采用前后端分离的解耦架构，由 **BetterNCM 插件 (前端)** 和 **Windows 原生程序 (后端)** 组成。两者独立运行，通过 HTTP API 进行通信。
 
 ### 1.1 目录结构概览
 
@@ -14,12 +14,12 @@ e:\Code\Taskbar-Lyrics-1.x.x
 ├── dist/                # 构建产物（用户最终使用的文件）
 ├── src/
 │   ├── betterncm-plugin/ # [前端] BetterNCM 插件源码 (JS/HTML/CSS)
-│   │   ├── base.js       # 基础配置与 WebSocket 封装
+│   │   ├── base.js       # 基础配置与 HTTP 通信封装
 │   │   ├── lyric.js      # 歌词获取与处理逻辑
 │   │   ├── config.html   # 设置界面
 │   │   └── ...
 │   └── taskbar-lyrics/   # [后端] C++ 原生程序源码
-│       ├── NetworkServer.* # WebSocket 服务器实现
+│       ├── NetworkServer.* # HTTP 服务器实现
 │       ├── CreateWindow.*  # 窗口创建与管理
 │       ├── RenderWindow.*  # Direct2D 渲染逻辑
 │       └── TaskbarLyrics.cpp # 程序入口
@@ -30,8 +30,8 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 | 模块 | 语言 | 职责 | 关键依赖 |
 | :--- | :--- | :--- | :--- |
-| **Frontend (Plugin)** | JavaScript | 1. 从网易云音乐获取歌词<br>2. 提供用户配置界面<br>3. 与后端建立 WebSocket 连接发送数据 | BetterNCM API |
-| **Backend (Native)** | C++ (Win32) | 1. 运行本地 WebSocket 服务器接收数据<br>2. 创建透明任务栏窗口<br>3. 使用 Direct2D 渲染歌词<br>4. 心跳检测与自动退出 | Windows API, Direct2D, DirectWrite, WinSock2 |
+| **Frontend (Plugin)** | JavaScript | 1. 从网易云音乐获取歌词<br>2. 提供用户配置界面<br>3. 通过 HTTP API 发送数据到后端 | BetterNCM API |
+| **Backend (Native)** | C++ (Win32) | 1. 独立运行，提供 HTTP API 接口<br>2. 创建透明任务栏窗口<br>3. 使用 Direct2D 渲染歌词<br>4. **不再自动退出，需手动管理生命周期** | Windows API, Direct2D, DirectWrite, WinSock2 |
 
 ---
 
@@ -44,10 +44,10 @@ e:\Code\Taskbar-Lyrics-1.x.x
 3.  **RefinedNowPlaying**: 兼容另一个插件的歌词数据源。
 
 ### 2.2 跨进程通信
-前端与后端通过 **WebSocket** 进行通信。
-- **服务端**: C++ 程序启动一个 TCP Server 并升级为 WebSocket 协议，监听端口 `BETTERNCM_API_PORT - 2`。
-- **客户端**: JS 插件通过 `WebSocket` API 建立长连接，支持断线自动重连和消息队列。
-- **心跳机制**: 前端每 5 秒发送一次心跳包，后端若 10 秒未收到任何数据则自动退出。
+前端与后端通过 **HTTP RESTful API** 进行通信。
+- **服务端**: C++ 程序启动一个 TCP Server，处理 HTTP POST 请求，默认监听端口 `27232`。
+- **客户端**: JS 插件通过 `fetch` API 发送 POST 请求。
+- **去耦合**: 移除了 WebSocket 长连接、心跳检测和自动退出机制。后端服务需独立启动。
 
 ### 2.3 窗口嵌入与渲染 (后端)
 - **嵌入任务栏**: 使用 `SetParent` API 将窗口父节点设置为任务栏窗口 (`Shell_TrayWnd`)，实现“嵌入”效果。
@@ -58,15 +58,17 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 ## 3. 接口文档
 
-后端服务监听地址：`ws://127.0.0.1:<PORT>` (PORT 默认为 BetterNCM 端口 - 2)
-所有通信均通过 WebSocket 文本帧传输 JSON 数据。JSON 结构中包含 `url` 字段用于区分指令。
+后端服务监听地址：`http://127.0.0.1:<PORT>` (PORT 默认为 27232，可通过命令行参数覆盖)
+通信方式：HTTP POST
+数据格式：JSON Body
 
 ### 3.1 歌词控制
 
 #### 发送歌词
 更新当前显示的歌词内容。
-- **指令 (`url`)**: `/taskbar/lyrics/lyrics`
-- **参数**:
+- **Endpoint**: `/taskbar/lyrics/lyrics`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "basic": "主歌词内容（如：原语言）",
@@ -76,8 +78,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 #### 歌词对齐
 设置歌词的文本对齐方式。
-- **指令 (`url`)**: `/taskbar/lyrics/align`
-- **参数**:
+- **Endpoint**: `/taskbar/lyrics/align`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "basic": 0, // 主歌词对齐方式 (0:左, 1:右, 2:中, 3:两端)
@@ -89,8 +92,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
 ### 3.2 样式设置
 
 #### 设置字体
-- **指令 (`url`)**: `/taskbar/font/font`
-- **参数**:
+- **Endpoint**: `/taskbar/font/font`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "font_family": "Microsoft YaHei UI" // 字体名称
@@ -98,8 +102,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
   ```
 
 #### 设置颜色
-- **指令 (`url`)**: `/taskbar/font/color`
-- **参数**:
+- **Endpoint**: `/taskbar/font/color`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "basic": {
@@ -112,8 +117,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
   *注：颜色值为 16 进制整数 (如 0xFF0000 表示红色)。*
 
 #### 设置样式
-- **指令 (`url`)**: `/taskbar/font/style`
-- **参数**:
+- **Endpoint**: `/taskbar/font/style`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "basic": {
@@ -127,8 +133,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
   ```
 
 #### 设置大小
-- **指令 (`url`)**: `/taskbar/font/size`
-- **参数**:
+- **Endpoint**: `/taskbar/font/size`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "basic": 20.0, // 主歌词字体大小 (单位: 像素)
@@ -139,8 +146,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
 ### 3.3 窗口控制
 
 #### 窗口位置
-- **指令 (`url`)**: `/taskbar/window/position`
-- **参数**:
+- **Endpoint**: `/taskbar/window/position`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "position": { "value": 0 } // 0: 自适应, 1: 左, 2: 中, 3: 右
@@ -148,8 +156,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
   ```
 
 #### 窗口边距
-- **指令 (`url`)**: `/taskbar/window/margin`
-- **参数**:
+- **Endpoint**: `/taskbar/window/margin`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "left": 0,
@@ -158,8 +167,9 @@ e:\Code\Taskbar-Lyrics-1.x.x
   ```
 
 #### 设置父窗口
-- **指令 (`url`)**: `/taskbar/window/screen`
-- **参数**:
+- **Endpoint**: `/taskbar/window/screen`
+- **Method**: POST
+- **Body**:
   ```json
   {
     "parent_taskbar": { "value": "Shell_TrayWnd" } // 任务栏窗口类名
@@ -167,12 +177,10 @@ e:\Code\Taskbar-Lyrics-1.x.x
   ```
 
 #### 关闭程序
-关闭 C++ 后端程序。无特殊参数。
-- **指令 (`url`)**: `/taskbar/close`
-
-#### 心跳检测
-保持连接活跃。
-- **指令 (`url`)**: `/taskbar/heartbeat`
+关闭 C++ 后端程序。
+- **Endpoint**: `/taskbar/close`
+- **Method**: POST
+- **Body**: `{}`
 
 ---
 
@@ -183,8 +191,8 @@ e:\Code\Taskbar-Lyrics-1.x.x
 1.  **Trigger (事件触发)**: 用户在网易云音乐切歌或进度改变。
 2.  **Capture (捕获)**: `betterncm-plugin/lyric.js` 捕获事件，从 DOM 或 API 获取当前时间点的歌词文本。
 3.  **Process (处理)**: 插件根据配置（如是否显示翻译、下一句位置）格式化歌词对象。
-4.  **Transport (传输)**: `betterncm-plugin/base.js` 将 JSON 数据通过 WebSocket 发送到本地服务器。
-5.  **Receive (接收)**: `taskbar-lyrics/NetworkServer.cpp` 接收 WebSocket 帧，解析 JSON，更新 `RenderWindow` 对象的成员变量。
+4.  **Transport (传输)**: `betterncm-plugin/api.js` 将 JSON 数据通过 HTTP POST 发送到本地服务器。
+5.  **Receive (接收)**: `taskbar-lyrics/NetworkServer.cpp` 接收 HTTP 请求，解析 JSON，更新 `RenderWindow` 对象的成员变量。
 6.  **Render (渲染)**: `NetworkServer` 发送 `WM_PAINT` 消息 -> `RenderWindow.cpp` 触发重绘 -> Direct2D 将新文本画在屏幕上。
 
 ---
@@ -197,24 +205,22 @@ e:\Code\Taskbar-Lyrics-1.x.x
 
 ### 5.2 构建步骤
 1.  **依赖说明**:
-    本项目已移除 `cpp-httplib` 和 `nlohmann-json` 的外部依赖，改用原生 WinSock2 和简易 JSON 解析，以减小体积和编译复杂度。
+    本项目已移除 `cpp-httplib` 和 `nlohmann-json` 的外部依赖，改用原生 WinSock2 和简易 JSON 解析。
 
 2.  **编译项目**:
     打开 `Taskbar Lyrics.sln`，选择 **Release** 配置和 **x86** 平台，点击生成。
 
-3.  **打包**:
-    编译生成的 `taskbar-lyrics.exe` 需要与 `src/betterncm-plugin/` 下的所有文件放在同一目录（即 `dist/` 目录结构）。
-
-4.  **安装**:
-    将 `dist` 文件夹复制到 BetterNCM 的插件目录下即可。
+3.  **部署**:
+    - 前端插件：安装到 BetterNCM 插件目录。
+    - 后端程序：可独立部署在任意位置，需手动启动或配置为系统服务。
 
 ---
 
 ## 6. 维护说明与已知问题
 
 ### 6.1 已知问题
-- **端口冲突风险**: 后端监听端口通过 `BETTERNCM_API_PORT - 2` 计算得出。如果该端口被其他程序占用，会导致启动失败。
-- **任务栏兼容性**: 程序强依赖于 Windows 任务栏的窗口类名 (`Shell_TrayWnd`) 和结构。如果 Windows 更新更改了任务栏实现（如 Windows 11 的某些早期版本或未来更新），可能会导致无法嵌入。
+- **端口冲突风险**: 默认端口 `27232`。如果被占用，需通过命令行参数更改。
+- **任务栏兼容性**: 程序强依赖于 Windows 任务栏的窗口类名 (`Shell_TrayWnd`) 和结构。
 - **高分屏适配**: 虽然使用了 Direct2D，但在不同 DPI 设置的多显示器环境下，窗口位置计算可能需要额外校准。
 
 ### 6.2 优化建议

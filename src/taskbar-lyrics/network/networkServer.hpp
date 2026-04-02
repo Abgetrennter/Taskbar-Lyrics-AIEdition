@@ -14,26 +14,21 @@ public:
     NetworkServer(LyricsWindow* window, unsigned short port);
     ~NetworkServer();
 
+    void start();
+    void stop();
+    bool isRunning() const { return m_isRunning; }
+
 private:
     LyricsWindow* m_window = nullptr;
     bool m_isRunning = false;
-    long long m_lastHeartbeatTime = 0;
+    unsigned short m_port = 27232;
     
     std::thread* m_serverThread = nullptr;
-    std::thread* m_heartbeatThread = nullptr;
     SOCKET m_listenSocket = INVALID_SOCKET;
 
     void listenThreadFunc(unsigned short port);
-    void heartbeatFunc();
     void handleConnection(SOCKET clientSocket);
     
-    // WebSocket Helpers
-    bool isWebSocketRequest(const std::string& request);
-    std::string base64Encode(const unsigned char* data, size_t len);
-    std::string calculateWebSocketKey(const std::string& key);
-    void webSocketHandshake(SOCKET clientSocket, const std::string& request);
-    bool readWebSocketFrame(SOCKET clientSocket, std::string& outMessage);
-
     // Business Logic
     void handleFont(const std::string& body);
     void handleColor(const std::string& body);
@@ -44,9 +39,16 @@ private:
     void handlePosition(const std::string& body);
     void handleMargin(const std::string& body);
     void handleScreen(const std::string& body);
-    void handleHeartbeat(const std::string& body);
     void handleClose(const std::string& body);
+    void handleHitokoto(const std::string& body);
 
-    // Encoding conversion
+    // Config Page Handlers
+    void handleConfigPage(SOCKET clientSocket);
+    void handleStyleCss(SOCKET clientSocket);
+    void handleGetConfig(SOCKET clientSocket);
+    void handleUpdateConfig(SOCKET clientSocket, const std::string& body);
+    void handleResetConfig(SOCKET clientSocket);
+    void applyConfigToRenderer();
+    
     std::wstring utf8ToWide(const std::string& str);
 };

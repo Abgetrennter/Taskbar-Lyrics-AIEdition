@@ -59,4 +59,7 @@ plugin.onLoad(async () => {
 
     // 启动后端
     await backendManager.start();
+
+    // 启动歌词获取
+    lyricManager.start();
 });
