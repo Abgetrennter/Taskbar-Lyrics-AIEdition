@@ -41,17 +41,14 @@ class BackendManager {
 
     /**
      * 应用所有配置
-     * @description 将当前所有配置发送给后端程序
+     * @description 从后端获取配置并同步到本地，然后刷新 UI
      */
-    applyConfig() {
-        apiInstance.font(ConfigManager.get("font"));
-        apiInstance.color(ConfigManager.get("color"));
-        apiInstance.style(ConfigManager.get("style"));
-        apiInstance.size(ConfigManager.get("size"));
-        apiInstance.windowPosition(ConfigManager.get("position"));
-        apiInstance.windowMargin(ConfigManager.get("margin"));
-        apiInstance.align(ConfigManager.get("align"));
-        apiInstance.windowScreen(ConfigManager.get("screen"));
+    async applyConfig() {
+        const backendConfig = await apiInstance.fetchConfig();
+        if (backendConfig) {
+            ConfigManager.syncFromBackend(backendConfig);
+            configView.refreshValues();
+        }
     }
 
     /**

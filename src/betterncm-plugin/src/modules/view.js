@@ -14,6 +14,7 @@ class ConfigView {
         this.root.style.height = "100%";
         this.root.style.width = "100%";
         this.pluginPath = "";
+        this.initialized = false;
     }
 
     /**
@@ -56,6 +57,7 @@ class ConfigView {
         this.initTabs();
         this.initGlobalEvents();
         this.bindSettings();
+        this.initialized = true;
     }
 
     /**
@@ -451,6 +453,57 @@ class ConfigView {
              $(".parent-taskbar .value").textContent = text;
         });
         $(".parent-taskbar .value").textContent = ConfigManager.get("screen").parent_taskbar.textContent;
+    }
+
+    /**
+     * 刷新 UI 配置值
+     * @description 从 ConfigManager 重新读取配置并更新所有 UI 控件
+     */
+    refreshValues() {
+        if (!this.initialized) return;
+        const $ = (sel) => this.root.querySelector(sel);
+        const toHex = (num) => `#${num.toString(16).padStart(6, "0")}`;
+
+        // Font
+        const fontEl = $(".content.font .font-settings .font-family");
+        if (fontEl) fontEl.value = ConfigManager.get("font")["font_family"];
+
+        // Color
+        const cur = ConfigManager.get("color");
+        const setColor = (sel, val) => { const el = $(sel); if (el) el.value = val; };
+        setColor(".basic-light-color", toHex(cur.basic.light.hex_color));
+        setColor(".basic-light-opacity", cur.basic.light.opacity);
+        setColor(".basic-dark-color", toHex(cur.basic.dark.hex_color));
+        setColor(".basic-dark-opacity", cur.basic.dark.opacity);
+        setColor(".extra-light-color", toHex(cur.extra.light.hex_color));
+        setColor(".extra-light-opacity", cur.extra.light.opacity);
+        setColor(".extra-dark-color", toHex(cur.extra.dark.hex_color));
+        setColor(".extra-dark-opacity", cur.extra.dark.opacity);
+
+        // Size
+        setColor(".basic-size", ConfigManager.get("size").basic);
+        setColor(".extra-size", ConfigManager.get("size").extra);
+
+        // Style
+        const curStyle = ConfigManager.get("style");
+        const setTxt = (sel, val) => { const el = $(sel); if (el) el.textContent = val; };
+        const setChk = (sel, val) => { const el = $(sel); if (el) el.checked = val; };
+        setTxt(".content.font .style-settings .basic-weight .value", curStyle.basic.weight.textContent);
+        setChk(".basic-underline", curStyle.basic.underline);
+        setChk(".basic-strikethrough", curStyle.basic.strikethrough);
+        setTxt(".content.font .style-settings .extra-weight .value", curStyle.extra.weight.textContent);
+        setChk(".extra-underline", curStyle.extra.underline);
+        setChk(".extra-strikethrough", curStyle.extra.strikethrough);
+
+        // Position
+        setTxt(".window-position .value", ConfigManager.get("position").position.textContent);
+
+        // Margin
+        setColor(".margin-settings .left", ConfigManager.get("margin").left);
+        setColor(".margin-settings .right", ConfigManager.get("margin").right);
+
+        // Screen
+        setTxt(".parent-taskbar .value", ConfigManager.get("screen").parent_taskbar.textContent);
     }
 }
 

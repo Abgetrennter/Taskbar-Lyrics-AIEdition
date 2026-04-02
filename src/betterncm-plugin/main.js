@@ -210,14 +210,29 @@ const ConfigManager = {
      * @returns {Object} 配置对象
      */
     get: name => Object.assign({}, defaultConfig[name], plugin.getConfig(name, defaultConfig[name])),
-    
+
     /**
      * 保存配置
      * @description 保存指定名称的配置
      * @param {string} name - 配置名称
      * @param {Object} value - 配置值
      */
-    set: (name, value) => plugin.setConfig(name, value)
+    set: (name, value) => plugin.setConfig(name, value),
+
+    /**
+     * 从后端同步配置
+     * @description 将后端返回的配置合并到本地，仅覆盖前后端共有的配置项
+     * @param {Object} backendConfig - 后端返回的配置对象
+     */
+    syncFromBackend: (backendConfig) => {
+        if (!backendConfig) return;
+        const sharedKeys = ["font", "color", "size", "style", "position", "margin", "align", "screen"];
+        for (const key of sharedKeys) {
+            if (backendConfig[key] !== undefined) {
+                plugin.setConfig(key, backendConfig[key]);
+            }
+        }
+    }
 };
 
 
@@ -371,6 +386,24 @@ class TaskbarLyricsAPI {
      * @param {Object} params - 参数
      */
     close(params) { this.fetch("/close", params); }
+
+    /**
+     * 获取后端配置
+     * @description 从后端获取当前配置
+     * @returns {Promise<Object|null>} 配置对象，失败返回 null
+     */
+    async fetchConfig() {
+        if (!this.isBackendOnline) return null;
+        try {
+            const response = await fetch(`http://127.0.0.1:${this.port}/api/config`);
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (e) {
+            console.error("Taskbar Lyrics: Failed to fetch config from backend", e);
+        }
+        return null;
+    }
 
     /**
      * 监听事件
@@ -876,17 +909,14 @@ class BackendManager {
 
     /**
      * 应用所有配置
-     * @description 将当前所有配置发送给后端程序
+     * @description 从后端获取配置并同步到本地，然后刷新 UI
      */
-    applyConfig() {
-        apiInstance.font(ConfigManager.get("font"));
-        apiInstance.color(ConfigManager.get("color"));
-        apiInstance.style(ConfigManager.get("style"));
-        apiInstance.size(ConfigManager.get("size"));
-        apiInstance.windowPosition(ConfigManager.get("position"));
-        apiInstance.windowMargin(ConfigManager.get("margin"));
-        apiInstance.align(ConfigManager.get("align"));
-        apiInstance.windowScreen(ConfigManager.get("screen"));
+    async applyConfig() {
+        const backendConfig = await apiInstance.fetchConfig();
+        if (backendConfig) {
+            ConfigManager.syncFromBackend(backendConfig);
+            configView.refreshValues();
+        }
     }
 
     /**
@@ -925,6 +955,7 @@ class ConfigView {
         this.root.style.height = "100%";
         this.root.style.width = "100%";
         this.pluginPath = "";
+        this.initialized = false;
     }
 
     /**
@@ -967,6 +998,7 @@ class ConfigView {
         this.initTabs();
         this.initGlobalEvents();
         this.bindSettings();
+        this.initialized = true;
     }
 
     /**
@@ -1362,6 +1394,57 @@ class ConfigView {
              $(".parent-taskbar .value").textContent = text;
         });
         $(".parent-taskbar .value").textContent = ConfigManager.get("screen").parent_taskbar.textContent;
+    }
+
+    /**
+     * 刷新 UI 配置值
+     * @description 从 ConfigManager 重新读取配置并更新所有 UI 控件
+     */
+    refreshValues() {
+        if (!this.initialized) return;
+        const $ = (sel) => this.root.querySelector(sel);
+        const toHex = (num) => `#${num.toString(16).padStart(6, "0")}`;
+
+        // Font
+        const fontEl = $(".content.font .font-settings .font-family");
+        if (fontEl) fontEl.value = ConfigManager.get("font")["font_family"];
+
+        // Color
+        const cur = ConfigManager.get("color");
+        const setColor = (sel, val) => { const el = $(sel); if (el) el.value = val; };
+        setColor(".basic-light-color", toHex(cur.basic.light.hex_color));
+        setColor(".basic-light-opacity", cur.basic.light.opacity);
+        setColor(".basic-dark-color", toHex(cur.basic.dark.hex_color));
+        setColor(".basic-dark-opacity", cur.basic.dark.opacity);
+        setColor(".extra-light-color", toHex(cur.extra.light.hex_color));
+        setColor(".extra-light-opacity", cur.extra.light.opacity);
+        setColor(".extra-dark-color", toHex(cur.extra.dark.hex_color));
+        setColor(".extra-dark-opacity", cur.extra.dark.opacity);
+
+        // Size
+        setColor(".basic-size", ConfigManager.get("size").basic);
+        setColor(".extra-size", ConfigManager.get("size").extra);
+
+        // Style
+        const curStyle = ConfigManager.get("style");
+        const setTxt = (sel, val) => { const el = $(sel); if (el) el.textContent = val; };
+        const setChk = (sel, val) => { const el = $(sel); if (el) el.checked = val; };
+        setTxt(".content.font .style-settings .basic-weight .value", curStyle.basic.weight.textContent);
+        setChk(".basic-underline", curStyle.basic.underline);
+        setChk(".basic-strikethrough", curStyle.basic.strikethrough);
+        setTxt(".content.font .style-settings .extra-weight .value", curStyle.extra.weight.textContent);
+        setChk(".extra-underline", curStyle.extra.underline);
+        setChk(".extra-strikethrough", curStyle.extra.strikethrough);
+
+        // Position
+        setTxt(".window-position .value", ConfigManager.get("position").position.textContent);
+
+        // Margin
+        setColor(".margin-settings .left", ConfigManager.get("margin").left);
+        setColor(".margin-settings .right", ConfigManager.get("margin").right);
+
+        // Screen
+        setTxt(".parent-taskbar .value", ConfigManager.get("screen").parent_taskbar.textContent);
     }
 }
 

@@ -105,12 +105,27 @@ const ConfigManager = {
      * @returns {Object} 配置对象
      */
     get: name => Object.assign({}, defaultConfig[name], plugin.getConfig(name, defaultConfig[name])),
-    
+
     /**
      * 保存配置
      * @description 保存指定名称的配置
      * @param {string} name - 配置名称
      * @param {Object} value - 配置值
      */
-    set: (name, value) => plugin.setConfig(name, value)
+    set: (name, value) => plugin.setConfig(name, value),
+
+    /**
+     * 从后端同步配置
+     * @description 将后端返回的配置合并到本地，仅覆盖前后端共有的配置项
+     * @param {Object} backendConfig - 后端返回的配置对象
+     */
+    syncFromBackend: (backendConfig) => {
+        if (!backendConfig) return;
+        const sharedKeys = ["font", "color", "size", "style", "position", "margin", "align", "screen"];
+        for (const key of sharedKeys) {
+            if (backendConfig[key] !== undefined) {
+                plugin.setConfig(key, backendConfig[key]);
+            }
+        }
+    }
 };

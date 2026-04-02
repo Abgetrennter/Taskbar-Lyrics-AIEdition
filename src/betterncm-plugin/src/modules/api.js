@@ -152,6 +152,24 @@ class TaskbarLyricsAPI {
     close(params) { this.fetch("/close", params); }
 
     /**
+     * 获取后端配置
+     * @description 从后端获取当前配置
+     * @returns {Promise<Object|null>} 配置对象，失败返回 null
+     */
+    async fetchConfig() {
+        if (!this.isBackendOnline) return null;
+        try {
+            const response = await fetch(`http://127.0.0.1:${this.port}/api/config`);
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (e) {
+            console.error("Taskbar Lyrics: Failed to fetch config from backend", e);
+        }
+        return null;
+    }
+
+    /**
      * 监听事件
      * @description 注册事件回调
      * @param {string} event - 事件名称 (onError)
